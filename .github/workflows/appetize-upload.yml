@@ -1,0 +1,104 @@
+name: Upload APK to Appetize.io
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  upload-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Find APK file
+        id: find-apk
+        run: |
+          echo "::group::Searching for APK files"
+          
+          # Search for APK files in the repository
+          APK_FILES=$(find . -type f -name "*.apk" | grep -v ".git")
+          
+          if [ -z "$APK_FILES" ]; then
+            echo "❌ ERROR: No APK file found in the repository"
+            echo "::error::No APK file found. Please add an APK file to the repository before running this workflow."
+            exit 1
+          fi
+          
+          # Get the first APK file found
+          APK_FILE=$(echo "$APK_FILES" | head -n 1)
+          echo "✓ Found APK file: $APK_FILE"
+          
+          # Set output for next steps
+          echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
+          echo "apk_name=$(basename $APK_FILE)" >> $GITHUB_OUTPUT
+          
+          echo "::endgroup::"
+      
+      - name: Upload to Appetize.io
+        id: upload
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
+          APK_PATH: ${{ steps.find-apk.outputs.apk_path }}
+          APK_NAME: ${{ steps.find-apk.outputs.apk_name }}
+        run: |
+          echo "::group::Uploading APK to Appetize.io"
+          
+          if [ -z "$APPETIZE_TOKEN" ]; then
+            echo "❌ ERROR: APPETIZE_TOKEN secret is not set"
+            echo "::error::APPETIZE_TOKEN is required. Please set it in repository secrets."
+            exit 1
+          fi
+          
+          echo "📤 Uploading $APK_NAME to Appetize.io..."
+          
+          # Upload to Appetize.io using their API
+          RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+            -X POST \
+            -u "$APPETIZE_TOKEN:" \
+            -F "file=@$APK_PATH" \
+            -F "platform=android" \
+            https://api.appetize.io/v1/apps)
+          
+          # Extract HTTP code and body
+          HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE:/d')
+          
+          echo "📊 API Response (HTTP $HTTP_CODE):"
+          echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
+          
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+            APP_URL=$(echo "$BODY" | jq -r '.publicURL // .url // empty' 2>/dev/null)
+            APP_KEY=$(echo "$BODY" | jq -r '.publicKey // .key // empty' 2>/dev/null)
+            
+            echo "✅ Successfully uploaded APK to Appetize.io"
+            
+            if [ ! -z "$APP_URL" ]; then
+              echo "🔗 App URL: $APP_URL"
+              echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+            fi
+            
+            if [ ! -z "$APP_KEY" ]; then
+              echo "🔑 App Key: $APP_KEY"
+              echo "app_key=$APP_KEY" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Failed to upload APK to Appetize.io (HTTP $HTTP_CODE)"
+            echo "::error::Upload failed with HTTP code $HTTP_CODE"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Log upload summary
+        if: success()
+        run: |
+          echo "::group::Upload Summary"
+          echo "✅ Upload completed successfully"
+          echo "📦 APK: ${{ steps.find-apk.outputs.apk_name }}"
+          echo "🔗 URL: ${{ steps.upload.outputs.app_url }}"
+          echo "🔑 Key: ${{ steps.upload.outputs.app_key }}"
+          echo "::endgroup::"
