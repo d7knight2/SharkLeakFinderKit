@@ -58,7 +58,7 @@ jobs:
           fi
           
           # Get APK file information
-          apk_size=$(stat -f%z "$apk_path" 2>/dev/null || stat -c%s "$apk_path" 2>/dev/null || echo "unknown")
+          apk_size=$(wc -c < "$apk_path" | tr -d ' ')
           apk_name=$(basename "$apk_path")
           
           echo "APK Details:"
@@ -122,9 +122,9 @@ jobs:
           if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
             echo "✅ Successfully uploaded APK to Appetize.io"
             
-            # Try to extract the app URL from response
-            app_url=$(echo "$response_body" | grep -o '"publicURL":"[^"]*"' | sed 's/"publicURL":"\([^"]*\)"/\1/' || true)
-            app_key=$(echo "$response_body" | grep -o '"publicKey":"[^"]*"' | sed 's/"publicKey":"\([^"]*\)"/\1/' || true)
+            # Try to extract the app URL from response using jq
+            app_url=$(echo "$response_body" | jq -r '.publicURL // empty' 2>/dev/null || true)
+            app_key=$(echo "$response_body" | jq -r '.publicKey // empty' 2>/dev/null || true)
             
             if [ -n "$app_url" ]; then
               echo "📱 App URL: $app_url"
