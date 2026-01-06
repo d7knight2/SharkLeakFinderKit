@@ -39,12 +39,42 @@ Download the latest release from the [GitHub repository](https://github.com/d7kn
 
 ### Quick Start with Demo UI
 
-1. Open `index.html` in your web browser
+**Option 1: Direct File Opening**
+1. Open `index.html` directly in your web browser
 2. Select a memory leak scenario from the dropdown menu
 3. Click "Start Leak Simulation" to begin
 4. Monitor the memory usage in real-time
 5. Click "Stop Simulation" to halt the leak
-6. Review the analysis results
+6. Click "Analyze Memory" to see detailed analysis
+7. Review the analysis results and recommendations
+
+**Option 2: Using a Local Web Server** (Recommended)
+```bash
+# Using Python 3
+python3 -m http.server 8080
+
+# Using Python 2
+python -m SimpleHTTPServer 8080
+
+# Using Node.js (if you have http-server installed)
+npx http-server -p 8080
+```
+
+Then navigate to `http://localhost:8080` in your web browser.
+
+### Demo UI Screenshots
+
+**Initial Interface:**
+![SharkLeakFinderKit Demo UI](https://github.com/user-attachments/assets/07dd0830-e986-4cb6-8eef-86403fbca074)
+
+**Scenario Selection:**
+![Scenario Selected](https://github.com/user-attachments/assets/a3369665-a3fc-41ce-90f2-eb9bbcf4546f)
+
+**Running Simulation with Real-time Chart:**
+![Running Simulation](https://github.com/user-attachments/assets/b0cead2b-cf8d-4c57-9996-a23701093e77)
+
+**Memory Leak Analysis Results:**
+![Analysis Results](https://github.com/user-attachments/assets/6508128b-ddb9-4d4b-a636-9bbd3056ae3f)
 
 ### Using the Demo UI
 
