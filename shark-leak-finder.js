@@ -12,6 +12,7 @@ class SharkLeakFinder {
         this.memorySnapshots = [];
         this.currentScenario = null;
         this.monitoringInterval = null;
+        this.maxSnapshots = 100;
     }
 
     /**
@@ -90,8 +91,8 @@ class SharkLeakFinder {
 
         this.memorySnapshots.push(snapshot);
 
-        // Keep only last 100 snapshots
-        if (this.memorySnapshots.length > 100) {
+        // Keep only last maxSnapshots snapshots
+        if (this.memorySnapshots.length > this.maxSnapshots) {
             this.memorySnapshots.shift();
         }
     }

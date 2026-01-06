@@ -3,6 +3,9 @@
  * Handles UI interactions and leak simulations
  */
 
+// Constants
+const MAX_CHART_POINTS = 50;
+
 // Initialize the leak finder
 const leakFinder = new SharkLeakFinder();
 
@@ -108,6 +111,14 @@ let chartData = {
     labels: [],
     values: []
 };
+
+// Helper function to clear leaked timers
+function clearLeakedTimers() {
+    if (window.__leakedTimers) {
+        window.__leakedTimers.forEach(timer => clearInterval(timer));
+        window.__leakedTimers = [];
+    }
+}
 
 // Chart drawing
 function drawChart() {
@@ -265,8 +276,8 @@ document.getElementById('start-btn').addEventListener('click', () => {
         chartData.labels.push(Date.now());
         chartData.values.push(leakFinder.getStats().objectsCreated);
         
-        // Keep only last 50 data points
-        if (chartData.values.length > 50) {
+        // Keep only last MAX_CHART_POINTS data points
+        if (chartData.values.length > MAX_CHART_POINTS) {
             chartData.labels.shift();
             chartData.values.shift();
         }
@@ -286,12 +297,7 @@ document.getElementById('stop-btn').addEventListener('click', () => {
     if (simulationInterval) {
         clearInterval(simulationInterval);
         simulationInterval = null;
-        
-        // Clear leaked timers
-        if (window.__leakedTimers) {
-            window.__leakedTimers.forEach(timer => clearInterval(timer));
-            window.__leakedTimers = [];
-        }
+        clearLeakedTimers();
     }
     
     leakFinder.stopMonitoring();
