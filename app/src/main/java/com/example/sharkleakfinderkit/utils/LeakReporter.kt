@@ -102,8 +102,9 @@ object LeakReporter {
         sb.appendLine("Leak Trace:")
         trace.referencePath.forEachIndexed { index, reference ->
             sb.appendLine("  ├─ ${reference.originObject.className}")
-            if (reference.referenceName.isNotEmpty()) {
-                sb.appendLine("  │    Leaking: ${reference.originObject.leakingStatusReason}")
+            val statusReason = reference.originObject.leakingStatusReason
+            if (statusReason.isNotEmpty()) {
+                sb.appendLine("  │    Leaking: $statusReason")
             }
         }
         sb.appendLine("  └─ ${trace.leakingObject.className} [LEAKING]")
