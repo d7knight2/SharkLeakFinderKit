@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SharkLeakFinderKit - Memory Leak Detection Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🦈 SharkLeakFinderKit</h1>
+            <p class="subtitle">Interactive Memory Leak Detection Demo</p>
+        </header>
+
+        <main>
+            <section class="control-panel">
+                <h2>Control Panel</h2>
+                
+                <div class="form-group">
+                    <label for="scenario-select">Select Leak Scenario:</label>
+                    <select id="scenario-select">
+                        <option value="">-- Choose a scenario --</option>
+                        <option value="eventListener">Event Listener Leak</option>
+                        <option value="closure">Closure Leak</option>
+                        <option value="detachedDOM">Detached DOM Nodes</option>
+                        <option value="timer">Timer Leak</option>
+                        <option value="globalVar">Global Variable Accumulation</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="leak-rate">Leak Rate (objects/second):</label>
+                    <input type="range" id="leak-rate" min="1" max="100" value="10">
+                    <span id="leak-rate-value">10</span>
+                </div>
+
+                <div class="button-group">
+                    <button id="start-btn" class="btn btn-primary">Start Leak Simulation</button>
+                    <button id="stop-btn" class="btn btn-secondary" disabled>Stop Simulation</button>
+                    <button id="analyze-btn" class="btn btn-info">Analyze Memory</button>
+                    <button id="clear-btn" class="btn btn-warning">Clear & Reset</button>
+                </div>
+            </section>
+
+            <section class="info-panel">
+                <h2>Scenario Information</h2>
+                <div id="scenario-info" class="info-content">
+                    <p>Select a scenario above to see details about the memory leak pattern.</p>
+                </div>
+            </section>
+
+            <section class="monitoring-panel">
+                <h2>Real-time Monitoring</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Objects Created</div>
+                        <div class="stat-value" id="objects-created">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Memory Usage (Est.)</div>
+                        <div class="stat-value" id="memory-usage">0 KB</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Leak Rate</div>
+                        <div class="stat-value" id="current-rate">0/sec</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value" id="status">Idle</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="memory-chart"></canvas>
+                </div>
+            </section>
+
+            <section class="analysis-panel">
+                <h2>Analysis Results</h2>
+                <div id="analysis-results" class="results-content">
+                    <p>Click "Analyze Memory" to see leak detection results.</p>
+                </div>
+            </section>
+
+            <section class="example-panel">
+                <h2>Example Output</h2>
+                <div class="code-block">
+                    <pre id="example-output">Waiting for simulation to start...</pre>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>SharkLeakFinderKit - Open Source Memory Leak Detection Tool</p>
+            <p><a href="https://github.com/d7knight2/SharkLeakFinderKit" target="_blank">View on GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="shark-leak-finder.js"></script>
+    <script src="demo.js"></script>
+</body>
+</html>
