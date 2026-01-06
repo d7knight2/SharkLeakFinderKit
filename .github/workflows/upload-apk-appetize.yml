@@ -1,0 +1,184 @@
+name: Upload APK to Appetize.io
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+
+jobs:
+  upload-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history to search for APKs
+      
+      - name: Search for AnrWatchdog APK
+        id: find-apk
+        run: |
+          echo "::group::Searching for APK files"
+          
+          # Search for APK files, prioritizing AnrWatchdog-related APKs
+          apk_files=$(find . -type f -name "*.apk" 2>/dev/null || true)
+          
+          if [ -z "$apk_files" ]; then
+            echo "❌ No APK files found in the repository"
+            echo "apk_found=false" >> $GITHUB_OUTPUT
+            echo "::endgroup::"
+            exit 0
+          fi
+          
+          echo "Found APK files:"
+          echo "$apk_files"
+          
+          # Try to find AnrWatchdog-specific APK first
+          anr_apk=$(echo "$apk_files" | grep -i "anrwatchdog\|anr-watchdog\|anr_watchdog" | head -n 1 || true)
+          
+          if [ -n "$anr_apk" ]; then
+            echo "✓ Found AnrWatchdog APK: $anr_apk"
+            apk_path="$anr_apk"
+          else
+            # If no AnrWatchdog-specific APK, try demo APKs
+            demo_apk=$(echo "$apk_files" | grep -i "demo" | head -n 1 || true)
+            
+            if [ -n "$demo_apk" ]; then
+              echo "✓ Found demo APK: $demo_apk"
+              apk_path="$demo_apk"
+            else
+              # Use the first APK found
+              apk_path=$(echo "$apk_files" | head -n 1)
+              echo "⚠️  No AnrWatchdog or demo APK found, using first available: $apk_path"
+            fi
+          fi
+          
+          # Get APK file information
+          apk_size=$(stat -f%z "$apk_path" 2>/dev/null || stat -c%s "$apk_path" 2>/dev/null || echo "unknown")
+          apk_name=$(basename "$apk_path")
+          
+          echo "APK Details:"
+          echo "  Name: $apk_name"
+          echo "  Path: $apk_path"
+          echo "  Size: $apk_size bytes"
+          
+          echo "apk_found=true" >> $GITHUB_OUTPUT
+          echo "apk_path=$apk_path" >> $GITHUB_OUTPUT
+          echo "apk_name=$apk_name" >> $GITHUB_OUTPUT
+          echo "apk_size=$apk_size" >> $GITHUB_OUTPUT
+          
+          echo "::endgroup::"
+      
+      - name: Validate Appetize.io Token
+        if: steps.find-apk.outputs.apk_found == 'true'
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
+        run: |
+          echo "::group::Validating Appetize.io credentials"
+          
+          if [ -z "$APPETIZE_TOKEN" ]; then
+            echo "❌ ERROR: APPETIZE_TOKEN secret is not configured"
+            echo "Please add APPETIZE_TOKEN as a GitHub secret in repository settings"
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo "✓ APPETIZE_TOKEN is configured"
+          echo "::endgroup::"
+      
+      - name: Upload APK to Appetize.io
+        if: steps.find-apk.outputs.apk_found == 'true'
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
+          APK_PATH: ${{ steps.find-apk.outputs.apk_path }}
+          APK_NAME: ${{ steps.find-apk.outputs.apk_name }}
+        run: |
+          echo "::group::Uploading APK to Appetize.io"
+          
+          echo "Uploading $APK_NAME to Appetize.io..."
+          
+          # Upload the APK to Appetize.io using their API
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -F "file=@$APK_PATH" \
+            -F "platform=android" \
+            -u "$APPETIZE_TOKEN:" \
+            https://api.appetize.io/v1/apps)
+          
+          # Extract HTTP status code (last line)
+          http_code=$(echo "$response" | tail -n 1)
+          
+          # Extract response body (all lines except last)
+          response_body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status Code: $http_code"
+          echo "Response Body:"
+          echo "$response_body"
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+            echo "✅ Successfully uploaded APK to Appetize.io"
+            
+            # Try to extract the app URL from response
+            app_url=$(echo "$response_body" | grep -o '"publicURL":"[^"]*"' | sed 's/"publicURL":"\([^"]*\)"/\1/' || true)
+            app_key=$(echo "$response_body" | grep -o '"publicKey":"[^"]*"' | sed 's/"publicKey":"\([^"]*\)"/\1/' || true)
+            
+            if [ -n "$app_url" ]; then
+              echo "📱 App URL: $app_url"
+            fi
+            
+            if [ -n "$app_key" ]; then
+              echo "🔑 App Key: $app_key"
+            fi
+            
+            echo "Full response saved for reference"
+          else
+            echo "❌ Failed to upload APK to Appetize.io"
+            echo "HTTP Status: $http_code"
+            echo "Response: $response_body"
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Log No APK Found
+        if: steps.find-apk.outputs.apk_found == 'false'
+        run: |
+          echo "::warning::No APK files found in the repository"
+          echo "::group::APK Search Details"
+          echo "Repository structure:"
+          find . -type f -name "*.apk" -o -name "*.aab" -o -name "*demo*" | head -20 || echo "No matching files found"
+          echo ""
+          echo "The workflow searched for:"
+          echo "  - Files matching *.apk pattern"
+          echo "  - Files with 'anrwatchdog', 'anr-watchdog', or 'demo' in the name"
+          echo ""
+          echo "To resolve this:"
+          echo "  1. Ensure APK files are built and committed to the repository, or"
+          echo "  2. Add a build step before this workflow to generate APK files, or"
+          echo "  3. Store APK files as release artifacts"
+          echo "::endgroup::"
+          exit 1
+      
+      - name: Upload Summary
+        if: always()
+        run: |
+          echo "## Appetize.io Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.find-apk.outputs.apk_found }}" == "true" ]; then
+            echo "### ✅ APK Upload Completed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **APK Name**: ${{ steps.find-apk.outputs.apk_name }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **APK Size**: ${{ steps.find-apk.outputs.apk_size }} bytes" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: Upload successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ No APK Found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No APK files were found in the repository." >> $GITHUB_STEP_SUMMARY
+            echo "Please ensure APK files are available before running this workflow." >> $GITHUB_STEP_SUMMARY
+          fi
