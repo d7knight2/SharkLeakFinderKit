@@ -90,11 +90,11 @@ if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
         APP_URL=$(echo "$BODY" | jq -r '.publicURL // .url // empty')
         APP_KEY=$(echo "$BODY" | jq -r '.publicKey // .key // empty')
         
-        if [ ! -z "$APP_URL" ]; then
+        if [ -n "$APP_URL" ]; then
             log_info "App URL: $APP_URL"
         fi
         
-        if [ ! -z "$APP_KEY" ]; then
+        if [ -n "$APP_KEY" ]; then
             log_info "App Key: $APP_KEY"
         fi
     fi

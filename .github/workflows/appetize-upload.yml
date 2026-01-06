@@ -76,12 +76,12 @@ jobs:
             
             echo "✅ Successfully uploaded APK to Appetize.io"
             
-            if [ ! -z "$APP_URL" ]; then
+            if [ -n "$APP_URL" ]; then
               echo "🔗 App URL: $APP_URL"
               echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
             fi
             
-            if [ ! -z "$APP_KEY" ]; then
+            if [ -n "$APP_KEY" ]; then
               echo "🔑 App Key: $APP_KEY"
               echo "app_key=$APP_KEY" >> $GITHUB_OUTPUT
             fi

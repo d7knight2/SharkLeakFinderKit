@@ -85,7 +85,7 @@ test_apk_discovery_with_apk() {
     # Search for APK
     APK_FILES=$(find "$TEST_DIR" -type f -name "*.apk")
     
-    if [ ! -z "$APK_FILES" ]; then
+    if [ -n "$APK_FILES" ]; then
         pass_test "APK file found successfully: $APK_FILES"
     else
         fail_test "APK file not found when it should exist"
@@ -206,7 +206,7 @@ test_file_size_calculation() {
     # Get file size
     if [ -f "$TEST_FILE" ]; then
         FILE_SIZE=$(du -h "$TEST_FILE" | cut -f1)
-        if [ ! -z "$FILE_SIZE" ]; then
+        if [ -n "$FILE_SIZE" ]; then
             pass_test "File size calculated successfully: $FILE_SIZE"
         else
             fail_test "Failed to calculate file size"

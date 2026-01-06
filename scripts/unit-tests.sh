@@ -66,7 +66,7 @@ assert_not_empty() {
     local value="$1"
     local message="${2:-Value should not be empty}"
     
-    if [ ! -z "$value" ]; then
+    if [ -n "$value" ]; then
         pass_test "$message"
     else
         fail_test "$message"
@@ -283,7 +283,7 @@ test_suite_environment() {
     
     log_test "Detect set environment variable"
     export TEST_VAR="test_value"
-    if [ ! -z "${TEST_VAR:-}" ]; then
+    if [ -n "$TEST_VAR" ]; then
         pass_test "Set variable detected correctly"
     else
         fail_test "Should detect set variable"
