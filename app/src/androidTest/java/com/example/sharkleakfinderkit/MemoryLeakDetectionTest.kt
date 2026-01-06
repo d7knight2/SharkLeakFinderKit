@@ -39,9 +39,7 @@ class MemoryLeakDetectionTest {
     @After
     fun tearDown() {
         // Force garbage collection to help leak detection
-        Runtime.getRuntime().gc()
-        Thread.sleep(1000)
-        Runtime.getRuntime().gc()
+        TestUtils.forceGarbageCollection()
     }
     
     @Test

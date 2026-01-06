@@ -54,8 +54,7 @@ class MemoryMonitoringTest {
     fun tearDown() {
         takeMemorySnapshot("final")
         logMemoryReport()
-        Runtime.getRuntime().gc()
-        Thread.sleep(1000)
+        TestUtils.forceGarbageCollection()
     }
     
     private fun takeMemorySnapshot(label: String) {
@@ -117,8 +116,7 @@ class MemoryMonitoringTest {
         }
         
         // Force GC
-        Runtime.getRuntime().gc()
-        Thread.sleep(1000)
+        TestUtils.forceGarbageCollection()
         
         takeMemorySnapshot("after_gc")
         
@@ -145,8 +143,7 @@ class MemoryMonitoringTest {
         }
         
         // Wait for cleanup
-        Runtime.getRuntime().gc()
-        Thread.sleep(2000)
+        TestUtils.forceGarbageCollection(2000)
         
         val finalThreadCount = Thread.activeCount()
         takeMemorySnapshot("final_threads")

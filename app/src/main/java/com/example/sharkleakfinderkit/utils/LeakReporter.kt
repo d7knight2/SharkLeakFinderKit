@@ -165,7 +165,7 @@ object LeakReporter {
     }
     
     private fun formatTimestamp(timestamp: Long): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
         return sdf.format(Date(timestamp))
     }
 }

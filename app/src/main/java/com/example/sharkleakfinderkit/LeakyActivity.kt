@@ -21,10 +21,8 @@ class LeakyActivity : AppCompatActivity() {
     
     // Static reference that will leak the Activity
     companion object {
-        @Volatile
         private var staticActivity: LeakyActivity? = null
         
-        @Volatile
         private var leakyThread: Thread? = null
     }
     
