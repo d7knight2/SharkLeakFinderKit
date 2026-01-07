@@ -81,7 +81,17 @@ validate_environment() {
 get_conflicting_prs() {
     log "$LOG_INFO" "Fetching open pull requests..."
     
-    local prs=$(gh pr list --state open --json number,headRefName,baseRefName,mergeable --limit 100)
+    local prs
+    local gh_exit_code=0
+    
+    prs=$(gh pr list --state open --json number,headRefName,baseRefName,mergeable --limit 100 2>&1) || gh_exit_code=$?
+    
+    if [ $gh_exit_code -ne 0 ]; then
+        log "$LOG_ERROR" "Failed to fetch pull requests from GitHub"
+        log "$LOG_ERROR" "Error output: $prs"
+        echo "[]"
+        return 1
+    fi
     
     if [ -z "$prs" ] || [ "$prs" = "[]" ]; then
         log "$LOG_INFO" "No open pull requests found"
@@ -89,7 +99,7 @@ get_conflicting_prs() {
         return 0
     fi
     
-    local pr_count=$(echo "$prs" | jq '. | length')
+    local pr_count=$(echo "$prs" | jq '. | length' 2>/dev/null || echo "0")
     log "$LOG_INFO" "Found $pr_count open pull request(s)"
     
     echo "$prs"
@@ -253,9 +263,9 @@ main() {
     
     # Get open pull requests
     local prs=$(get_conflicting_prs)
-    local pr_count=$(echo "$prs" | jq '. | length')
+    local pr_count=$(echo "$prs" | jq '. | length' 2>/dev/null || echo "0")
     
-    if [ "$pr_count" -eq 0 ]; then
+    if [ -z "$pr_count" ] || [ "$pr_count" = "0" ]; then
         log "$LOG_INFO" "No pull requests to process. Exiting."
         exit 0
     fi
