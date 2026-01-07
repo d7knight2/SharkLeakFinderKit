@@ -109,7 +109,21 @@ get_conflicting_prs() {
 restore_original_branch() {
     local original_branch=$1
     log "$LOG_INFO" "Restoring original branch..."
-    git checkout "$original_branch" 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
+    
+    # Try original branch first
+    if git checkout "$original_branch" 2>/dev/null; then
+        return 0
+    fi
+    
+    # If that fails, try to get the default branch from remote
+    local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "")
+    
+    if [ -n "$default_branch" ]; then
+        git checkout "$default_branch" 2>/dev/null && return 0
+    fi
+    
+    # Fallback to common branch names
+    git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
 }
 
 # Function to attempt conflict resolution for a PR
@@ -144,8 +158,14 @@ resolve_pr_conflicts() {
     
     # Checkout the PR branch
     log "$LOG_INFO" "Checking out branch: $head_ref"
-    if ! git checkout "$head_ref" 2>&1; then
+    local checkout_output
+    local checkout_exit_code=0
+    
+    checkout_output=$(git checkout "$head_ref" 2>&1) || checkout_exit_code=$?
+    
+    if [ $checkout_exit_code -ne 0 ]; then
         log "$LOG_ERROR" "Failed to checkout branch $head_ref"
+        log "$LOG_ERROR" "Checkout output: $checkout_output"
         gh pr comment "$pr_number" --body "⚠️ **Automated Merge Conflict Resolution Failed**
 
 Unable to checkout branch \`$head_ref\`. This may indicate:
@@ -272,7 +292,8 @@ main() {
     local prs=$(get_conflicting_prs)
     local pr_count=$(echo "$prs" | jq '. | length' 2>/dev/null || echo "0")
     
-    if [ -z "$pr_count" ] || [ "$pr_count" = "0" ]; then
+    # Check if pr_count is a valid number and greater than 0
+    if ! [[ "$pr_count" =~ ^[0-9]+$ ]] || [ "$pr_count" -eq 0 ]; then
         log "$LOG_INFO" "No pull requests to process. Exiting."
         exit 0
     fi
