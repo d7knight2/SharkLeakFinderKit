@@ -105,6 +105,13 @@ get_conflicting_prs() {
     echo "$prs"
 }
 
+# Function to restore the original branch
+restore_original_branch() {
+    local original_branch=$1
+    log "$LOG_INFO" "Restoring original branch..."
+    git checkout "$original_branch" 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
+}
+
 # Function to attempt conflict resolution for a PR
 resolve_pr_conflicts() {
     local pr_number=$1
@@ -191,7 +198,7 @@ Successfully merged \`$base_ref\` into \`$head_ref\` to resolve conflicts.
             CONFLICTS_RESOLVED=$((CONFLICTS_RESOLVED + 1))
             
             # Return to original branch
-            git checkout "$original_branch" 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
+            restore_original_branch "$original_branch"
             return 0
         else
             log "$LOG_ERROR" "Failed to push changes for PR #$pr_number"
@@ -211,7 +218,7 @@ The merge was successful locally, but failed to push changes to \`$head_ref\`.
             CONFLICTS_FAILED=$((CONFLICTS_FAILED + 1))
             
             # Return to original branch
-            git checkout "$original_branch" 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
+            restore_original_branch "$original_branch"
             return 1
         fi
     else
@@ -241,7 +248,7 @@ $merge_output
         CONFLICTS_FAILED=$((CONFLICTS_FAILED + 1))
         
         # Return to original branch
-        git checkout "$original_branch" 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
+        restore_original_branch "$original_branch"
         return 1
     fi
 }
@@ -299,7 +306,7 @@ main() {
     log "$LOG_INFO" "=========================================="
     
     # Only exit with error if we tried to resolve conflicts and all failed
-    if [ $CONFLICTS_FAILED -gt 0 ] && [ $CONFLICTS_RESOLVED -eq 0 ] && [ $(($CONFLICTS_FAILED + $CONFLICTS_RESOLVED)) -gt 0 ]; then
+    if [ $CONFLICTS_FAILED -gt 0 ] && [ $CONFLICTS_RESOLVED -eq 0 ]; then
         log "$LOG_ERROR" "All conflict resolution attempts failed"
         exit 1
     fi
