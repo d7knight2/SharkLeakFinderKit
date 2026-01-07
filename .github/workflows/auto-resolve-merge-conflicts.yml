@@ -24,7 +24,6 @@ jobs:
       - name: Resolve merge conflicts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "::group::Running conflict resolution script"
           bash scripts/resolve_conflicts.sh

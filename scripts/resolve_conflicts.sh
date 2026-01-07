@@ -299,7 +299,7 @@ main() {
     log "$LOG_INFO" "=========================================="
     
     # Only exit with error if we tried to resolve conflicts and all failed
-    if [ $CONFLICTS_FAILED -gt 0 ] && [ $CONFLICTS_RESOLVED -eq 0 ] && [ $NO_CONFLICT_COUNT -eq 0 ]; then
+    if [ $CONFLICTS_FAILED -gt 0 ] && [ $CONFLICTS_RESOLVED -eq 0 ] && [ $(($CONFLICTS_FAILED + $CONFLICTS_RESOLVED)) -gt 0 ]; then
         log "$LOG_ERROR" "All conflict resolution attempts failed"
         exit 1
     fi
