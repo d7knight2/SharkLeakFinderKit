@@ -10,12 +10,14 @@ SharkLeakFinderKit demonstrates best practices for integrating LeakCanary into A
 
 - ✅ **Latest LeakCanary Integration** - Uses LeakCanary 2.14 (latest stable version)
 - ✅ **Best Practice Configuration** - Properly configured for optimal leak detection
-- ✅ **Comprehensive UI Tests** - Automated tests to catch memory leaks
+- ✅ **Comprehensive Testing** - Both unit tests and UI tests for complete coverage
+- ✅ **Automated CI/CD** - GitHub Actions workflow for mandatory PR testing
 - ✅ **Memory Monitoring** - Real-time memory usage tracking during UI events
 - ✅ **Leak Reporting** - Detailed logging and reporting of detected leaks
 - ✅ **Sample Scenarios** - Demonstrates common memory leak patterns
 - ✅ **Instance Count Tracking** - Monitors object retention and instance proliferation
 - ✅ **Thread Leak Detection** - Identifies background threads that leak activity references
+- ✅ **Branch Protection Ready** - Documentation for enforcing test requirements
 
 ## LeakCanary Integration
 
@@ -71,14 +73,63 @@ SharkLeakFinderKit/
 │   │   │   │       └── LeakReporter.kt          # Leak logging utility
 │   │   │   └── res/
 │   │   │       └── layout/                      # UI layouts
+│   │   ├── test/
+│   │   │   └── java/com/example/sharkleakfinderkit/
+│   │   │       └── utils/
+│   │   │           └── LeakReporterTest.kt      # Unit tests
 │   │   └── androidTest/
 │   │       └── java/com/example/sharkleakfinderkit/
 │   │           ├── MemoryLeakDetectionTest.kt   # Leak detection tests
 │   │           └── MemoryMonitoringTest.kt      # Memory monitoring tests
 │   └── build.gradle.kts                         # App dependencies
+├── .github/workflows/
+│   └── pr-tests.yml                             # CI/CD testing workflow
 ├── build.gradle.kts                             # Project configuration
+├── TESTING.md                                   # Testing guide
+├── BRANCH_PROTECTION.md                         # Branch protection setup
 └── README.md                                     # This file
 ```
+
+## Testing
+
+This project implements comprehensive testing to ensure code quality and prevent memory leaks from reaching production.
+
+### Test Types
+
+#### Unit Tests
+Located in `app/src/test/`, these tests verify individual components in isolation using JUnit:
+
+```bash
+# Run unit tests
+./gradlew test
+
+# Or with system Gradle
+gradle test
+```
+
+**Test Coverage:**
+- `LeakReporterTest.kt` - Tests leak reporting utility functions
+
+#### UI Tests (Instrumented Tests)
+Located in `app/src/androidTest/`, these tests use Espresso and LeakCanary to test UI interactions and detect memory leaks:
+
+```bash
+# Run UI tests (requires connected device or emulator)
+./gradlew connectedAndroidTest
+
+# Or with system Gradle
+gradle connectedAndroidTest
+```
+
+### Continuous Integration
+
+The repository includes automated testing via GitHub Actions:
+- **Workflow:** `.github/workflows/pr-tests.yml`
+- **Triggers:** Every pull request to `main` or `develop`
+- **Tests Run:** Both unit tests and UI tests
+- **Requirement:** All tests must pass before merge
+
+See **[BRANCH_PROTECTION.md](BRANCH_PROTECTION.md)** for detailed setup instructions on enforcing mandatory testing.
 
 ## UI Testing for Memory Leaks
 
