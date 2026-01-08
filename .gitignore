@@ -16,8 +16,9 @@ gen/
 out/
 .gradle/
 build/
-gradle/
-gradlew
-gradlew.bat
+# Keep Gradle wrapper files (should be committed)
+# gradle/
+# gradlew
+# gradlew.bat
 *.log
 *.hprof
