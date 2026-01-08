@@ -21,100 +21,10 @@ jobs:
           fetch-depth: 0  # Fetch all history for all branches
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      
-      - name: Get open pull requests
-        id: get-prs
+      - name: Resolve merge conflicts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "::group::Fetching open pull requests"
-          prs=$(gh pr list --state open --json number,headRefName,baseRefName,mergeable --limit 100)
-          echo "Found PRs: $prs"
+          echo "::group::Running conflict resolution script"
+          bash scripts/resolve_conflicts.sh
           echo "::endgroup::"
-          echo "prs=$prs" >> $GITHUB_OUTPUT
-      
-      - name: Check and resolve merge conflicts
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PRS: ${{ steps.get-prs.outputs.prs }}
-        run: |
-          echo "::group::Processing pull requests for merge conflicts"
-          
-          # Parse the JSON array of PRs
-          pr_count=$(echo "$PRS" | jq '. | length')
-          echo "Total open PRs: $pr_count"
-          
-          if [ "$pr_count" -eq 0 ]; then
-            echo "No open pull requests found."
-            exit 0
-          fi
-          
-          # Process each PR
-          for i in $(seq 0 $((pr_count - 1))); do
-            pr_number=$(echo "$PRS" | jq -r ".[$i].number")
-            head_ref=$(echo "$PRS" | jq -r ".[$i].headRefName")
-            base_ref=$(echo "$PRS" | jq -r ".[$i].baseRefName")
-            mergeable=$(echo "$PRS" | jq -r ".[$i].mergeable")
-            
-            echo "::group::Processing PR #$pr_number"
-            echo "PR #$pr_number: $head_ref -> $base_ref"
-            echo "Mergeable status: $mergeable"
-            
-            # Check if PR has merge conflicts (mergeable is "CONFLICTING")
-            if [ "$mergeable" = "CONFLICTING" ]; then
-              echo "⚠️  PR #$pr_number has merge conflicts. Attempting to resolve..."
-              
-              # Fetch all refs
-              git fetch origin
-              
-              # Checkout the PR branch
-              echo "Checking out branch: $head_ref"
-              if git checkout "$head_ref" 2>&1; then
-                echo "✓ Successfully checked out $head_ref"
-                
-                # Attempt to merge the base branch
-                echo "Attempting to merge $base_ref into $head_ref..."
-                if git merge "origin/$base_ref" --no-edit -m "Auto-merge $base_ref to resolve conflicts" 2>&1; then
-                  echo "✓ Successfully merged $base_ref into $head_ref"
-                  
-                  # Push the changes
-                  echo "Pushing changes to $head_ref..."
-                  if git push origin "$head_ref" 2>&1; then
-                    echo "✅ Successfully resolved merge conflicts for PR #$pr_number"
-                    
-                    # Add a comment to the PR
-                    gh pr comment "$pr_number" --body "🤖 Automated merge conflict resolution: Successfully merged \`$base_ref\` into \`$head_ref\` to resolve conflicts."
-                  else
-                    echo "❌ Failed to push changes for PR #$pr_number"
-                    gh pr comment "$pr_number" --body "⚠️ Automated merge conflict resolution attempted but failed to push changes. Manual intervention may be required."
-                  fi
-                else
-                  echo "❌ Failed to automatically merge $base_ref into $head_ref for PR #$pr_number"
-                  echo "This PR requires manual conflict resolution."
-                  
-                  # Abort the merge
-                  git merge --abort 2>/dev/null || true
-                  
-                  # Add a comment to the PR
-                  gh pr comment "$pr_number" --body "⚠️ Automated merge conflict resolution failed. The conflicts in this PR require manual resolution. Please resolve the conflicts manually and push the changes."
-                fi
-              else
-                echo "❌ Failed to checkout branch $head_ref for PR #$pr_number"
-                gh pr comment "$pr_number" --body "⚠️ Automated merge conflict resolution failed: Unable to checkout branch \`$head_ref\`. Manual intervention may be required."
-              fi
-              
-              # Return to main branch
-              git checkout - 2>/dev/null || git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
-            else
-              echo "✓ PR #$pr_number has no merge conflicts (status: $mergeable)"
-            fi
-            
-            echo "::endgroup::"
-          done
-          
-          echo "::endgroup::"
-          echo "✅ Finished processing all pull requests"
