@@ -1,314 +1,242 @@
-# Testing the Appetize.io Upload Workflow
+# LeakCanary Testing Guide
 
-This document provides instructions for testing the Appetize.io upload workflow and scripts.
+## Overview
 
-## Prerequisites
+This document provides detailed guidance on testing for memory leaks using LeakCanary in the SharkLeakFinderKit project.
 
-1. **Appetize.io Account**: Sign up at [appetize.io](https://appetize.io/)
-2. **API Token**: Get your API token from Appetize.io dashboard
-3. **GitHub Repository Access**: Admin access to set repository secrets
+## Test Categories
 
-## Setup Steps
+### 1. Automated Leak Detection Tests
 
-### 1. Configure GitHub Secret
+Located in `MemoryLeakDetectionTest.kt`, these tests use LeakCanary's `DetectLeaksAfterTestSuccess()` rule to automatically detect leaks.
 
-1. Go to your repository on GitHub
-2. Navigate to **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Name: `APPETIZE_TOKEN`
-5. Value: Your Appetize.io API token
-6. Click **Add secret**
+#### Key Features:
+- **Automatic Failure** - Tests fail when leaks are detected
+- **Lifecycle Testing** - Validates proper cleanup in activity lifecycle
+- **Instance Tracking** - Monitors multiple instances for retention issues
 
-### 2. Prepare an APK File
-
-Since this is a JavaScript project, you won't have a native APK. For testing purposes, you can:
-
-**Option A: Create a minimal test APK**
-```bash
-# Create a test directory structure
-mkdir -p test-apk/META-INF
-cd test-apk
-
-# Create AndroidManifest.xml
-cat > AndroidManifest.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.sharkleakfinder.test"
-    android:versionCode="1"
-    android:versionName="1.0">
-    <application android:label="Test App">
-        <activity android:name=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-EOF
-
-# Create a dummy APK (ZIP file with .apk extension)
-zip -r ../test-app.apk AndroidManifest.xml META-INF/
-cd ..
-rm -rf test-apk
+#### Example Test:
+```kotlin
+@Test
+fun testLeakyActivityDetectsMemoryLeaks() {
+    // Navigate to LeakyActivity
+    onView(withId(R.id.leakyActivityButton)).perform(click())
+    
+    // Destroy the activity
+    onView(withId(R.id.finishButton)).perform(click())
+    
+    // Wait for leak detection
+    Thread.sleep(3000)
+    
+    // Test will fail if leaks are detected
+}
 ```
 
-**Option B: Download a sample APK**
-```bash
-# Note: Only use open-source, freely distributable APKs
-# Example: Download from a trusted source or use your own app
+### 2. Memory Monitoring Tests
+
+Located in `MemoryMonitoringTest.kt`, these tests continuously monitor memory metrics during UI interactions.
+
+#### Monitored Metrics:
+- **PSS (Proportional Set Size)** - Total memory used
+- **Dalvik Heap** - Java heap memory
+- **Native Heap** - Native memory allocation
+- **Thread Count** - Active threads
+- **Heap Allocation** - Runtime memory allocation
+
+#### Memory Snapshot:
+```kotlin
+data class MemorySnapshot(
+    val timestamp: Long,
+    val totalPss: Long,
+    val dalvikPss: Long,
+    val nativePss: Long,
+    val heapAllocated: Long,
+    val heapFree: Long,
+    val threadCount: Int
+)
 ```
 
-**Option C: Skip this for now**
-- The workflow will fail gracefully with a clear error message if no APK is found
-- This is expected behavior and can be used to test the error handling
+## Running Tests
 
-### 3. Test Locally with Scripts
-
-#### Test the Mock Test Suite
-```bash
-# Run mock tests
-./scripts/test-appetize-upload.sh
-
-# Expected output: 8/8 tests passed
-```
-
-#### Test the Unit Test Suite
-```bash
-# Run unit tests
-./scripts/unit-tests.sh
-
-# Expected output: 32/32 tests passed
-```
-
-#### Test the Upload Script (without actual upload)
-```bash
-# Test with a dummy APK (will fail at upload, which is expected)
-touch test.apk
-./scripts/upload-to-appetize.sh test.apk dummy_token
-
-# This will demonstrate:
-# - APK file discovery works
-# - File size calculation works
-# - API call is attempted
-# - Error handling for invalid token
-```
-
-### 4. Test GitHub Actions Workflow
-
-#### Method 1: Manual Trigger (Recommended for first test)
-
-1. Go to your repository on GitHub
-2. Navigate to **Actions** tab
-3. Select **Upload APK to Appetize.io** workflow
-4. Click **Run workflow** button
-5. Select the branch (e.g., `main` or your feature branch)
-6. Click **Run workflow**
-
-**Expected Results:**
-- If no APK exists: Workflow fails with clear error message
-- If APK exists and token is valid: Workflow succeeds and uploads to Appetize.io
-
-#### Method 2: Test with act (Local GitHub Actions Testing)
+### Local Development
 
 ```bash
-# Install act (if not already installed)
-# macOS
-brew install act
+# Run all instrumentation tests
+./gradlew connectedAndroidTest
 
-# Linux
-curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+# Run specific test class
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.sharkleakfinderkit.MemoryLeakDetectionTest
 
-# Test the workflow locally
-act workflow_dispatch -W .github/workflows/appetize-upload.yml
-
-# Or test push trigger
-act push -W .github/workflows/appetize-upload.yml
+# Run with detailed logs
+./gradlew connectedAndroidTest --info
 ```
 
-#### Method 3: Push to Main Branch
+### View Test Results
 
 ```bash
-# Merge your changes to main
-git checkout main
-git merge your-feature-branch
-git push origin main
+# Open HTML report
+open app/build/reports/androidTests/connected/index.html
 
-# Workflow will automatically trigger
+# Check logcat for leak details
+adb logcat | grep -E "LeakCanary|LeakReporter|MemoryMonitor"
 ```
 
-## Validation Checklist
+## Test Patterns
 
-After running the workflow, verify:
+### Pattern 1: Basic Leak Detection
 
-- [ ] Workflow starts successfully
-- [ ] APK discovery step completes
-  - [ ] If APK exists: Found and path is logged
-  - [ ] If no APK: Workflow fails with clear error message
-- [ ] Upload step attempts to upload to Appetize.io
-  - [ ] API request is made with proper authentication
-  - [ ] Response is logged (success or failure)
-- [ ] On success:
-  - [ ] App URL is displayed in logs
-  - [ ] App key is displayed in logs
-  - [ ] Upload summary is shown
-- [ ] On failure:
-  - [ ] Error message is clear and actionable
-  - [ ] HTTP status code is shown
-  - [ ] Workflow fails with non-zero exit code
-
-## Testing Scenarios
-
-### Scenario 1: No APK File
-
-**Setup:** Remove any APK files from repository
-
-**Expected:** 
-```
-❌ ERROR: No APK file found in the repository
-Error: No APK file found. Please add an APK file to the repository before running this workflow.
+```kotlin
+@Test
+fun testActivityDoesNotLeak() {
+    // Perform activity operations
+    // ...
+    
+    // Close activity
+    activityRule.scenario.close()
+    
+    // Wait for leak detection
+    Thread.sleep(2000)
+    
+    // DetectLeaksAfterTestSuccess rule will verify no leaks
+}
 ```
 
-**Status:** ✅ Working (verified by unit tests)
+### Pattern 2: Memory Monitoring
 
-### Scenario 2: Missing APPETIZE_TOKEN Secret
-
-**Setup:** Do not set APPETIZE_TOKEN in repository secrets
-
-**Expected:**
-```
-❌ ERROR: APPETIZE_TOKEN secret is not set
-Error: APPETIZE_TOKEN is required. Please set it in repository secrets.
-```
-
-**Status:** ✅ Working (verified by unit tests)
-
-### Scenario 3: Invalid API Token
-
-**Setup:** Set APPETIZE_TOKEN to an invalid value
-
-**Expected:**
-```
-❌ Failed to upload APK to Appetize.io (HTTP 401)
-Error: Upload failed with HTTP code 401
+```kotlin
+@Test
+fun testMemoryGrowth() {
+    takeMemorySnapshot("baseline")
+    
+    // Perform operations
+    repeat(10) {
+        // ... UI interactions
+        takeMemorySnapshot("iteration_$it")
+    }
+    
+    // Analyze memory growth
+    logMemoryReport()
+}
 ```
 
-**Status:** ✅ Working (verified by mock tests)
+### Pattern 3: Thread Leak Detection
 
-### Scenario 4: Successful Upload
-
-**Setup:** 
-- Valid APK file in repository
-- Valid APPETIZE_TOKEN secret
-
-**Expected:**
+```kotlin
+@Test
+fun testThreadCountStable() {
+    val initialThreadCount = Thread.activeCount()
+    
+    // Perform operations
+    // ...
+    
+    val finalThreadCount = Thread.activeCount()
+    
+    // Thread count should return to baseline
+    assertEquals(initialThreadCount, finalThreadCount)
+}
 ```
-✅ Successfully uploaded APK to Appetize.io
-🔗 App URL: https://appetize.io/app/[key]
-🔑 App Key: [key]
+
+## Common Leak Scenarios
+
+### 1. Handler Leaks
+
+**Problem:**
+```kotlin
+private val handler = Handler(Looper.getMainLooper())
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    handler.postDelayed({ /* work */ }, 60000)
+}
 ```
-
-**Status:** ⏳ Requires valid Appetize.io account to test
-
-## Troubleshooting
-
-### Issue: "No APK file found"
 
 **Solution:**
-1. Add an APK file to your repository
-2. Ensure it has `.apk` extension
-3. Commit and push the APK file
-
-### Issue: "APPETIZE_TOKEN secret is not set"
-
-**Solution:**
-1. Go to repository Settings → Secrets → Actions
-2. Add `APPETIZE_TOKEN` secret with your API token
-3. Retry the workflow
-
-### Issue: "Upload failed with HTTP 401"
-
-**Solution:**
-1. Verify your Appetize.io API token is correct
-2. Check if your Appetize.io account is active
-3. Regenerate API token if necessary
-
-### Issue: "Upload failed with HTTP 400"
-
-**Solution:**
-1. Verify the APK file is valid
-2. Check the APK is not corrupted
-3. Ensure the APK meets Appetize.io requirements
-
-### Issue: Workflow doesn't trigger on push
-
-**Solution:**
-1. Verify push is to `main` branch
-2. Check workflow file syntax is correct
-3. Ensure GitHub Actions are enabled for repository
-
-## Integration with CI/CD
-
-### Adding to Existing Workflows
-
-You can integrate APK upload as a step in your existing workflows:
-
-```yaml
-# In your existing workflow
-- name: Upload to Appetize
-  uses: ./.github/workflows/appetize-upload.yml
+```kotlin
+override fun onDestroy() {
+    super.onDestroy()
+    handler.removeCallbacksAndMessages(null)
+}
 ```
 
-### Build and Upload Pattern
+### 2. Static Reference Leaks
 
-For Android projects, you might want to build then upload:
+**Problem:**
+```kotlin
+companion object {
+    var staticActivity: Activity? = null
+}
 
-```yaml
-- name: Build APK
-  run: ./gradlew assembleRelease
-
-- name: Upload to Appetize
-  env:
-    APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
-  run: |
-    APK_PATH=$(find . -name "*.apk" | head -1)
-    ./scripts/upload-to-appetize.sh "$APK_PATH" "$APPETIZE_TOKEN"
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    staticActivity = this
+}
 ```
 
-## Performance Metrics
+**Solution:**
+```kotlin
+override fun onDestroy() {
+    super.onDestroy()
+    staticActivity = null
+}
+```
 
-- **APK Discovery:** < 1 second for typical repository
-- **Upload Time:** Depends on APK size (typically 10-60 seconds)
-- **Total Workflow Time:** 1-2 minutes average
+### 3. Thread Leaks
 
-## Security Best Practices
+**Problem:**
+```kotlin
+private val thread = Thread {
+    Thread.sleep(60000)
+    runOnUiThread { /* update UI */ }
+}
 
-1. ✅ Never commit API tokens to repository
-2. ✅ Use GitHub secrets for sensitive data
-3. ✅ Rotate API tokens regularly
-4. ✅ Review workflow logs for exposed data
-5. ✅ Limit workflow permissions to minimum required
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    thread.start()
+}
+```
 
-## Next Steps
+**Solution:**
+```kotlin
+private var thread: Thread? = null
 
-After successful testing:
+override fun onDestroy() {
+    super.onDestroy()
+    thread?.interrupt()
+    thread = null
+}
+```
 
-1. Document the app URL for team access
-2. Set up notifications for upload failures
-3. Consider adding upload to multiple environments
-4. Automate APK building if needed
-5. Add upload to your release process
+## Interpreting Test Results
 
-## Support
+### Success Case
 
-For issues:
-1. Check workflow logs in GitHub Actions
-2. Run local tests with mock scripts
-3. Verify all prerequisites are met
-4. Open an issue in the repository
+```
+✅ testMainActivityDoesNotLeak PASSED
+✅ testNoLeaksAfterApplicationRestart PASSED
+```
 
-## Additional Resources
+LeakCanary detected no leaks. All objects were properly garbage collected.
 
-- [Appetize.io API Documentation](https://appetize.io/docs)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [GitHub Secrets Documentation](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
+### Failure Case
+
+```
+❌ testLeakyActivityDetectsMemoryLeaks FAILED
+
+LeakCanary detected 3 leaked objects:
+1. LeakyActivity leaked via Handler callback
+2. LeakyActivity leaked via static reference
+3. Thread leaked holding activity reference
+```
+
+Test failed because LeakCanary detected memory leaks. Review the leak traces to fix the issues.
+
+### Memory Report Example
+
+```
+=== Memory Report ===
+Initial PSS: 45234KB
+Final PSS: 67890KB
+PSS Increase: 22656KB
+Initial Threads: 15
+Final Threads: 18
+Thread Increase: 3

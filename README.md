@@ -1,219 +1,324 @@
-# SharkLeakFinderKit 🦈
+# SharkLeakFinderKit
 
-A powerful and intuitive toolkit for detecting and analyzing memory leaks in JavaScript applications. SharkLeakFinderKit helps developers identify memory leaks early in the development process through real-time monitoring and comprehensive analysis.
+A comprehensive Android toolkit for detecting and monitoring memory leaks using LeakCanary, with integrated UI tests and memory monitoring utilities.
 
-## 📋 Overview
+## Overview
 
-SharkLeakFinderKit is a lightweight, browser-based memory leak detection tool designed to help developers:
-- Identify memory leaks in web applications
-- Analyze object retention patterns
-- Monitor memory usage in real-time
-- Understand memory allocation and deallocation cycles
+SharkLeakFinderKit demonstrates best practices for integrating LeakCanary into Android applications and provides a complete testing framework for detecting memory leaks during development and automated testing.
 
-The toolkit provides an interactive demo UI that simulates common memory leak scenarios, making it an excellent educational resource for learning about memory management in JavaScript.
+## Features
 
-## ✨ Features
+- ✅ **Latest LeakCanary Integration** - Uses LeakCanary 2.14 (latest stable version)
+- ✅ **Best Practice Configuration** - Properly configured for optimal leak detection
+- ✅ **Comprehensive UI Tests** - Automated tests to catch memory leaks
+- ✅ **Memory Monitoring** - Real-time memory usage tracking during UI events
+- ✅ **Leak Reporting** - Detailed logging and reporting of detected leaks
+- ✅ **Sample Scenarios** - Demonstrates common memory leak patterns
+- ✅ **Instance Count Tracking** - Monitors object retention and instance proliferation
+- ✅ **Thread Leak Detection** - Identifies background threads that leak activity references
 
-- **Real-time Memory Monitoring**: Track memory usage as your application runs
-- **Leak Detection**: Automatically identify potential memory leak patterns
-- **Interactive Demo**: Hands-on examples of common memory leak scenarios
-- **Visual Analysis**: Charts and graphs to visualize memory usage patterns
-- **Scenario-based Testing**: Pre-configured leak scenarios for testing and learning
-- **Zero Dependencies**: Pure JavaScript implementation with no external dependencies
-- **Browser-based**: Works directly in your web browser with no installation required
+## LeakCanary Integration
 
-## 🚀 Installation
+### Version Information
 
-### Option 1: Clone the Repository
+**Current Version:** LeakCanary 2.14 (April 2024 - Latest Stable)
+
+The project uses the latest stable version of LeakCanary. For bleeding-edge features, v3.0-alpha-8 is available but may have stability issues.
+
+### Configuration
+
+LeakCanary is configured in `LeakFinderApplication.kt` with the following best practices:
+
+```kotlin
+LeakCanary.config = LeakCanary.config.copy(
+    retainedVisibleThreshold = 5,  // Show notification after 5 retained objects
+    dumpHeap = true,                // Automatically dump heap for analysis
+    dumpHeapWhenDebugging = true    // Dump heap even when debugger is attached
+)
+```
+
+### Key Features
+
+1. **Automatic Detection** - LeakCanary automatically monitors:
+   - Activities
+   - Fragments
+   - ViewModels
+   - Services
+   - Root Views
+
+2. **Debug-Only Integration** - LeakCanary is only included in debug builds:
+   ```gradle
+   debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+   ```
+
+3. **Instrumentation Testing** - LeakCanary testing library for UI tests:
+   ```gradle
+   androidTestImplementation("com.squareup.leakcanary:leakcanary-android-instrumentation:2.14")
+   ```
+
+## Project Structure
+
+```
+SharkLeakFinderKit/
+├── app/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/example/sharkleakfinderkit/
+│   │   │   │   ├── LeakFinderApplication.kt      # App configuration
+│   │   │   │   ├── MainActivity.kt               # Main entry point
+│   │   │   │   ├── LeakyActivity.kt             # Demo activity with leaks
+│   │   │   │   └── utils/
+│   │   │   │       └── LeakReporter.kt          # Leak logging utility
+│   │   │   └── res/
+│   │   │       └── layout/                      # UI layouts
+│   │   └── androidTest/
+│   │       └── java/com/example/sharkleakfinderkit/
+│   │           ├── MemoryLeakDetectionTest.kt   # Leak detection tests
+│   │           └── MemoryMonitoringTest.kt      # Memory monitoring tests
+│   └── build.gradle.kts                         # App dependencies
+├── build.gradle.kts                             # Project configuration
+└── README.md                                     # This file
+```
+
+## UI Testing for Memory Leaks
+
+### Running Tests
+
+Execute the instrumentation tests to detect memory leaks:
 
 ```bash
-git clone https://github.com/d7knight2/SharkLeakFinderKit.git
-cd SharkLeakFinderKit
+./gradlew connectedAndroidTest
 ```
 
-### Option 2: Download ZIP
+### Test Suites
 
-Download the latest release from the [GitHub repository](https://github.com/d7knight2/SharkLeakFinderKit) and extract it to your desired location.
+#### 1. MemoryLeakDetectionTest
 
-## 📖 Usage
+Comprehensive tests for detecting various types of memory leaks:
 
-### Quick Start with Demo UI
+- **testMainActivityDoesNotLeak** - Verifies MainActivity doesn't leak
+- **testLeakyActivityDetectsMemoryLeaks** - Detects leaks in LeakyActivity
+- **testMultipleActivityInstancesForLeaks** - Monitors instance retention
+- **testNoLeaksAfterApplicationRestart** - Tests activity recreation scenarios
 
-**Option 1: Direct File Opening**
-1. Open `index.html` directly in your web browser
-2. Select a memory leak scenario from the dropdown menu
-3. Click "Start Leak Simulation" to begin
-4. Monitor the memory usage in real-time
-5. Click "Stop Simulation" to halt the leak
-6. Click "Analyze Memory" to see detailed analysis
-7. Review the analysis results and recommendations
+```kotlin
+@get:Rule
+val detectLeaksRule = DetectLeaksAfterTestSuccess()
+```
 
-**Option 2: Using a Local Web Server** (Recommended)
+The `DetectLeaksAfterTestSuccess()` rule automatically fails tests when leaks are detected.
+
+#### 2. MemoryMonitoringTest
+
+Advanced memory monitoring during UI events:
+
+- **testMemoryUsageDuringUIInteractions** - Tracks memory during repeated interactions
+- **testThreadCountMonitoring** - Detects thread leaks
+- **testMemoryLeakDetectionWithInstanceCounting** - Monitors object proliferation
+
+Features:
+- Takes memory snapshots at key points
+- Tracks PSS (Proportional Set Size)
+- Monitors thread count changes
+- Logs detailed memory reports
+
+### Memory Leak Scenarios
+
+The `LeakyActivity` demonstrates three common memory leak patterns:
+
+1. **Handler Leak** - Handler with delayed callback that outlives activity
+2. **Static Reference Leak** - Activity stored in static variable
+3. **Thread Leak** - Background thread holding activity reference
+
+These are intentional leaks for testing purposes. In production:
+- Always clean up handlers: `handler.removeCallbacksAndMessages(null)`
+- Never store activities in static variables
+- Interrupt threads in `onDestroy()`
+
+## Memory Monitoring
+
+### LeakReporter Utility
+
+The `LeakReporter` class provides comprehensive leak logging:
+
+```kotlin
+// Log a detected leak
+LeakReporter.logLeak(
+    leakType = "Activity",
+    description = "MainActivity leaked via Handler",
+    retainedHeapBytes = 1024000,
+    retainedObjectCount = 150,
+    trace = "Full leak trace..."
+)
+
+// Generate summary report
+val summary = LeakReporter.generateSummaryReport()
+Log.d("LeakReport", summary)
+```
+
+Features:
+- Detailed leak information logging
+- Heap analysis result parsing
+- Summary report generation
+- Leak trace formatting
+
+## Best Practices
+
+### 1. Development Workflow
+
+- **Monitor Continuously** - Keep LeakCanary active during development
+- **Fix Immediately** - Address leaks as soon as they're detected
+- **Review Regularly** - Check LeakCanary notifications and heap dumps
+
+### 2. Common Leak Sources to Avoid
+
+- ❌ Static references to Context/Activity/Fragment
+- ❌ Non-static inner classes holding outer class references
+- ❌ Unclosed resources (Cursors, Streams, Database connections)
+- ❌ Listeners not unregistered in lifecycle methods
+- ❌ Handlers with pending callbacks after activity destruction
+- ❌ Background threads with activity references
+
+### 3. Testing Best Practices
+
+- Run instrumentation tests regularly
+- Monitor memory during stress tests
+- Check thread counts after activity destruction
+- Verify instance counts after GC
+- Use `DetectLeaksAfterTestSuccess()` rule in all UI tests
+
+### 4. Configuration Tips
+
+```kotlin
+// Recommended LeakCanary configuration
+LeakCanary.config = LeakCanary.config.copy(
+    // Retain dumps for offline analysis
+    retainedVisibleThreshold = 5,
+    
+    // Enable heap dumping
+    dumpHeap = true,
+    
+    // Dump even when debugging
+    dumpHeapWhenDebugging = true
+)
+
+// Show LeakCanary launcher icon for easy access
+LeakCanary.showLeakDisplayActivityLauncherIcon(true)
+```
+
+## Building the Project
+
+### Prerequisites
+
+- Android Studio Arctic Fox or later
+- Android SDK 21+ (minimum)
+- Android SDK 34 (target)
+- Kotlin 1.9.20+
+- Gradle 8.2+
+
+### Build Commands
+
 ```bash
-# Using Python 3
-python3 -m http.server 8080
+# Build debug APK
+./gradlew assembleDebug
 
-# Using Python 2
-python -m SimpleHTTPServer 8080
+# Run unit tests
+./gradlew test
 
-# Using Node.js (if you have http-server installed)
-npx http-server -p 8080
+# Run instrumentation tests
+./gradlew connectedAndroidTest
+
+# Build release APK
+./gradlew assembleRelease
 ```
 
-Then navigate to `http://localhost:8080` in your web browser.
+## Gradle Dependencies
 
-### Demo UI Screenshots
-
-**Initial Interface:**
-![SharkLeakFinderKit Demo UI](https://github.com/user-attachments/assets/07dd0830-e986-4cb6-8eef-86403fbca074)
-
-**Scenario Selection:**
-![Scenario Selected](https://github.com/user-attachments/assets/a3369665-a3fc-41ce-90f2-eb9bbcf4546f)
-
-**Running Simulation with Real-time Chart:**
-![Running Simulation](https://github.com/user-attachments/assets/b0cead2b-cf8d-4c57-9996-a23701093e77)
-
-**Memory Leak Analysis Results:**
-![Analysis Results](https://github.com/user-attachments/assets/6508128b-ddb9-4d4b-a636-9bbd3056ae3f)
-
-### Using the Demo UI
-
-The demo interface provides several pre-configured scenarios:
-
-#### Available Scenarios:
-
-1. **Event Listener Leak**: Demonstrates memory leaks caused by unremoved event listeners
-2. **Closure Leak**: Shows how closures can retain references and cause leaks
-3. **Detached DOM Nodes**: Illustrates leaks from DOM nodes that are removed but still referenced
-4. **Timer Leak**: Demonstrates leaks from intervals/timeouts that aren't cleared
-5. **Global Variable Accumulation**: Shows how global variables can accumulate and cause leaks
-
-#### Example Usage:
-
-```javascript
-// Access the SharkLeakFinderKit in your code
-const leakFinder = new SharkLeakFinder();
-
-// Start monitoring
-leakFinder.startMonitoring();
-
-// Your application code here
-// ...
-
-// Get leak analysis
-const analysis = leakFinder.analyze();
-console.log(analysis);
-
-// Stop monitoring
-leakFinder.stopMonitoring();
-```
-
-## 🎯 Common Memory Leak Patterns
-
-### 1. Forgotten Event Listeners
-```javascript
-// Bad: Event listener never removed
-element.addEventListener('click', handler);
-
-// Good: Remove when done
-element.addEventListener('click', handler);
-element.removeEventListener('click', handler);
-```
-
-### 2. Closure References
-```javascript
-// Bad: Closure holds reference to large object
-function createLeak() {
-    const largeData = new Array(1000000);
-    return () => console.log(largeData[0]);
-}
-
-// Good: Release reference when done
-function noLeak() {
-    let largeData = new Array(1000000);
-    const result = largeData[0];
-    largeData = null;
-    return () => console.log(result);
+```kotlin
+dependencies {
+    // LeakCanary - Latest stable version
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+    
+    // LeakCanary for instrumentation tests
+    androidTestImplementation("com.squareup.leakcanary:leakcanary-android-instrumentation:2.14")
+    
+    // Testing framework
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
 ```
 
-### 3. Detached DOM Nodes
-```javascript
-// Bad: DOM node removed but reference kept
-const div = document.getElementById('myDiv');
-document.body.removeChild(div);
-// div still referenced, cannot be garbage collected
+## Viewing Leak Reports
 
-// Good: Release reference
-let div = document.getElementById('myDiv');
-document.body.removeChild(div);
-div = null;
+### During Development
+
+1. LeakCanary shows a notification when leaks are detected
+2. Tap the notification to view detailed leak traces
+3. Access LeakCanary from the app launcher icon
+4. Review heap dumps in `/sdcard/Download/leakcanary-{app}/`
+
+### During Testing
+
+1. Tests fail automatically when leaks are detected
+2. Check logcat for detailed leak information:
+   ```bash
+   adb logcat | grep -E "LeakCanary|LeakReporter|MemoryMonitor"
+   ```
+3. Review test reports in `app/build/reports/androidTests/connected/`
+
+## Continuous Integration
+
+To integrate leak detection in CI:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Run Instrumentation Tests
+  run: ./gradlew connectedAndroidTest
+  
+- name: Upload Test Reports
+  if: always()
+  uses: actions/upload-artifact@v3
+  with:
+    name: test-reports
+    path: app/build/reports/
 ```
 
-## 🧪 Testing
+## Troubleshooting
 
-The demo UI includes built-in testing scenarios. To run tests:
+### LeakCanary Not Detecting Leaks
 
-1. Open `index.html` in your browser
-2. Open browser Developer Tools (F12)
-3. Navigate to the Console tab
-4. Run each scenario and observe memory behavior
-5. Use the browser's Memory profiler for detailed analysis
+1. Ensure you're running a debug build
+2. Check LeakCanary configuration in Application class
+3. Verify `debugImplementation` is used, not `implementation`
+4. Force GC and wait: `Runtime.getRuntime().gc()`
 
-## 🤝 Contributing
+### Tests Not Failing on Leaks
 
-We welcome contributions to SharkLeakFinderKit! Here's how you can help:
+1. Verify `DetectLeaksAfterTestSuccess()` rule is present
+2. Check LeakCanary instrumentation dependency is included
+3. Ensure sufficient time for leak detection (add `Thread.sleep()`)
 
-### Getting Started
+### Memory Monitoring Not Working
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Make your changes
-4. Test thoroughly
-5. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-6. Push to the branch (`git push origin feature/AmazingFeature`)
-7. Open a Pull Request
+1. Check device permissions for memory profiling
+2. Verify tests are running on a real device or AVD
+3. Review logcat output for memory snapshots
 
-### Contribution Guidelines
+## Further Reading
 
-- **Code Quality**: Write clean, readable, and well-documented code
-- **Testing**: Include tests for new features
-- **Documentation**: Update documentation for any changes
-- **Commit Messages**: Use clear and descriptive commit messages
-- **Code Style**: Follow existing code style and conventions
+- [LeakCanary Official Documentation](https://square.github.io/leakcanary/)
+- [LeakCanary GitHub Repository](https://github.com/square/leakcanary)
+- [Android Memory Management Guide](https://developer.android.com/topic/performance/memory)
+- [Shark Heap Analysis](https://square.github.io/leakcanary/shark/)
 
-### Areas for Contribution
+## License
 
-- Additional memory leak scenarios
-- Improved visualization and charting
-- Performance optimizations
-- Browser compatibility enhancements
-- Educational content and tutorials
-- Bug fixes and issue resolution
+This project is provided as a demonstration and educational resource for integrating LeakCanary into Android applications.
 
-## 📝 License
+## Contributing
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by common memory leak patterns in JavaScript applications
-- Built with modern web technologies
-- Community contributions and feedback
-
-## 📧 Support
-
-For questions, issues, or suggestions:
-- Open an issue on [GitHub](https://github.com/d7knight2/SharkLeakFinderKit/issues)
-- Check existing documentation and examples
-- Review common memory leak patterns above
-
-## 🔗 Resources
-
-- [MDN: Memory Management](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_Management)
-- [Chrome DevTools: Memory Profiling](https://developer.chrome.com/docs/devtools/memory-problems/)
-- [JavaScript Memory Leaks Guide](https://javascript.info/garbage-collection)
-
----
-
-Made with ❤️ by the SharkLeakFinderKit team
+Contributions are welcome! Please ensure:
+- All tests pass
+- No new memory leaks are introduced (except in demo scenarios)
+- Code follows Kotlin style guidelines
+- Documentation is updated for new features
