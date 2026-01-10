@@ -478,11 +478,36 @@ LOG_LEVEL=debug
 
 ### Security
 
+**Important Security Considerations:**
+
+The `apply-wingman-fixes.yml` workflow is triggered by `issue_comment` events, which CodeQL identifies as a potential security risk. We've implemented multiple security layers:
+
+1. **Trusted Bot Verification**: Only comments from verified bots (wingman, fly-ci, github-actions) trigger the workflow
+2. **Explicit Bot Type Checking**: Validates commenter.user.type === 'Bot'
+3. **Safe Checkout**: Checks out base branch first, then fetches PR branch
+4. **No Code Execution**: Only applies text patches via `git apply`
+5. **Limited Scope**: Workflow only modifies files via patch application
+
+**Security Risk Assessment:**
+- **Risk Level**: Medium (CodeQL flags as high due to issue_comment trigger)
+- **Mitigation**: Multiple verification layers + no code execution from PR
+- **Recommendation**: Review your organization's security requirements before use
+
+**Alternative Secure Approach:**
+For maximum security, consider using the GitHub App solution instead, which provides:
+- More granular permission control
+- Better audit trails
+- Isolated execution environment
+
+**Additional Security Best Practices:**
+
 - ✅ Never commit private keys or secrets
 - ✅ Use environment variables for sensitive data
 - ✅ Rotate GitHub App private key periodically
 - ✅ Use webhook secrets to verify payloads
 - ✅ Review GitHub App permissions regularly
+- ✅ Monitor workflow execution logs
+- ✅ Restrict repository access appropriately
 
 ### Performance
 

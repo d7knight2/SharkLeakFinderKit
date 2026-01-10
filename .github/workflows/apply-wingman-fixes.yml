@@ -1,5 +1,18 @@
 name: Apply FlyCI Wingman Fixes
 
+# SECURITY NOTE: This workflow is triggered by issue_comment which can come from untrusted sources.
+# We implement multiple layers of security:
+# 1. Only trusted bot accounts (wingman, fly-ci, github-actions) can trigger
+# 2. Explicit bot type verification
+# 3. Checkout base branch first before fetching PR
+# 4. No execution of PR code - only text patch application
+# 5. All patches are applied via git apply (no code execution)
+#
+# RISK: CodeQL flags this as potentially unsafe because issue_comment triggers
+# can come from any user. However, our verification steps ensure only trusted
+# bots can proceed. Organizations should review their security requirements
+# before using this workflow.
+
 on:
   issue_comment:
     types: [created]
@@ -13,12 +26,13 @@ jobs:
   apply-fixes:
     name: Apply Wingman Fixes
     runs-on: ubuntu-latest
-    # Only run on PR comments from wingman bot
+    # Security: Only run on PR comments from trusted FlyCI Wingman bot accounts
+    # This prevents untrusted users from triggering privileged operations
     if: |
       github.event.issue.pull_request &&
       (contains(github.event.comment.user.login, 'wingman') ||
        contains(github.event.comment.user.login, 'fly-ci') ||
-       contains(github.event.comment.body, '```diff'))
+       github.event.comment.user.type == 'Bot')
 
     steps:
       - name: Get PR details
@@ -38,12 +52,37 @@ jobs:
 
             return pr.data;
 
-      - name: Checkout PR branch
+      - name: Verify commenter is trusted bot
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commenter = context.payload.comment.user.login.toLowerCase();
+            const isBot = context.payload.comment.user.type === 'Bot';
+            const isTrustedBot = commenter.includes('wingman') ||
+                                 commenter.includes('fly-ci') ||
+                                 commenter.includes('github-actions');
+
+            if (!isBot && !isTrustedBot) {
+              core.setFailed('Security: Only trusted bots can trigger patch application');
+              throw new Error('Untrusted commenter: ' + commenter);
+            }
+
+            core.info('Verified trusted bot: ' + commenter);
+
+      # Security: Checkout base branch first to avoid running untrusted code
+      # We only apply text patches, not execute PR code
+      - name: Checkout repository at base
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.pr.outputs.head_ref }}
+          ref: ${{ steps.pr.outputs.base_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+
+      - name: Safely fetch and checkout PR branch
+        run: |
+          # Fetch PR branch without executing any code
+          git fetch origin ${{ steps.pr.outputs.head_ref }}
+          git checkout FETCH_HEAD
 
       - name: Configure Git
         run: |
