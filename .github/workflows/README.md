@@ -2,11 +2,101 @@
 
 This directory contains GitHub Actions workflows for automating various tasks in the SharkLeakFinderKit repository.
 
-## Workflows
+## Core Workflows
 
-### 1. Upload APK to Appetize.io (`upload-apk-appetize.yml`)
+### 1. Build and Test (`build-and-test.yml`)
 
-This workflow automatically uploads Android APK files (specifically for the AnrWatchdog demo) to Appetize.io for testing and demonstration purposes.
+**Primary CI/CD workflow for building APKs and running comprehensive tests.**
+
+#### Trigger Conditions
+
+- **Push**: Runs on push to `main`, `develop`, or `feature/**` branches
+- **Pull Request**: Runs on PRs to `main` or `develop` branches
+- **Manual**: Can be triggered manually using workflow_dispatch
+
+#### Jobs
+
+##### 1. **build** - Build Debug APK
+- Sets up Java 17 (Temurin distribution)
+- Configures Gradle caching for faster builds
+- Runs `./gradlew assembleDebug`
+- Uploads debug APK artifact (30-day retention)
+- Verifies APK creation and reports size
+
+##### 2. **unit-tests** - Unit Tests
+- Runs after successful build
+- Executes `./gradlew test`
+- Uploads test results and HTML reports (7-day retention)
+- Independent execution for parallel processing
+
+##### 3. **ui-tests** - Instrumented UI Tests
+- Runs after successful build (parallel with unit tests)
+- Sets up Android Emulator (API 30, x86_64, Google APIs)
+- Caches AVD for faster subsequent runs
+- Executes `./gradlew connectedAndroidTest`
+- Uploads test results and reports (7-day retention)
+
+##### 4. **build-release** - Build Release APK
+- Runs only after both unit and UI tests pass
+- Only triggered on push to `main` or `develop` branches
+- Builds unsigned release APK
+- Uploads release APK artifact (90-day retention)
+
+##### 5. **test-summary** - Aggregate Test Results
+- Runs after all tests complete (success or failure)
+- Reports overall test status
+- Fails if any test job failed
+- Provides summary in GitHub Actions UI
+
+#### Environment Variables
+
+- `JAVA_VERSION`: '17'
+- `JAVA_DISTRIBUTION`: 'temurin'
+
+#### Artifacts
+
+| Artifact Name | Contents | Retention |
+|---------------|----------|-----------|
+| `app-debug` | Debug APK | 30 days |
+| `app-release` | Release APK (unsigned) | 90 days |
+| `unit-test-results` | Unit test reports | 7 days |
+| `ui-test-results` | UI test reports | 7 days |
+
+#### Timeouts
+
+- build: 30 minutes
+- unit-tests: 30 minutes
+- ui-tests: 60 minutes
+- build-release: 30 minutes
+
+#### Features
+
+✅ **Parallel Execution**: Unit and UI tests run simultaneously for faster feedback  
+✅ **Smart Caching**: Gradle dependencies and AVD cached automatically  
+✅ **Release Gating**: Release builds only after all tests pass  
+✅ **Comprehensive Reporting**: Detailed summaries in GitHub Actions UI  
+✅ **Artifact Management**: Strategic retention policies for different artifacts
+
+### 2. Pull Request Tests (`pr-tests.yml`)
+
+**Dedicated workflow for validating pull request changes.**
+
+#### Trigger Conditions
+
+- **Pull Request**: Runs on PRs opened, synchronized, or reopened
+- **Target Branches**: `main`, `develop`
+- **Manual**: Can be triggered manually using workflow_dispatch
+
+#### Jobs
+
+Similar to `build-and-test.yml` but focused on PR validation:
+- **unit-tests**: Validates unit test changes
+- **ui-tests**: Validates UI test changes
+- **test-summary**: Aggregates results and blocks merging if tests fail
+
+### 3. Upload APK to Appetize.io (`upload-apk-appetize.yml`)
+
+This workflow automatically uploads Android APK files to Appetize.io for cloud-based testing.
 
 #### Trigger Conditions
 

@@ -240,3 +240,252 @@ PSS Increase: 22656KB
 Initial Threads: 15
 Final Threads: 18
 Thread Increase: 3
+====================
+```
+
+This indicates significant memory growth during testing which may suggest memory leaks.
+
+## Running Tests Locally
+
+### Quick Start
+
+```bash
+# Run unit tests only
+./scripts/run-tests.sh
+
+# Run all tests (unit + UI)
+./scripts/run-tests.sh --all
+
+# Run with verbose output
+./scripts/run-tests.sh --verbose
+```
+
+### Using Gradle Directly
+
+```bash
+# Run unit tests
+./gradlew test
+
+# Run UI tests (requires connected device/emulator)
+./gradlew connectedAndroidTest
+
+# Run all tests
+./gradlew test connectedAndroidTest
+```
+
+### Build and Validate
+
+Run complete validation pipeline (tests + build + APK validation):
+
+```bash
+# Debug build with all tests
+./scripts/build-and-validate.sh
+
+# Release build with unit tests only
+./scripts/build-and-validate.sh --release --skip-ui-tests
+
+# Skip tests and just build
+./scripts/build-and-validate.sh --skip-tests
+```
+
+## Continuous Integration (CI/CD)
+
+### GitHub Actions Workflows
+
+The project includes comprehensive CI/CD workflows for automated testing and building:
+
+#### 1. Build and Test Workflow (`build-and-test.yml`)
+
+**Triggers:**
+- Push to `main`, `develop`, or `feature/**` branches
+- Pull requests to `main` or `develop`
+- Manual dispatch
+
+**Jobs:**
+
+1. **build** - Builds debug APK
+   - Sets up Java 17
+   - Runs `./gradlew assembleDebug`
+   - Uploads APK as artifact (30-day retention)
+   - Provides build summary with APK size
+
+2. **unit-tests** - Runs unit tests
+   - Executes `./gradlew test`
+   - Uploads test results and reports
+   - Runs after successful build
+
+3. **ui-tests** - Runs instrumented tests
+   - Sets up Android emulator (API 30)
+   - Caches AVD for faster subsequent runs
+   - Executes `./gradlew connectedAndroidTest`
+   - Uploads test results and reports
+   - Runs after successful build
+
+4. **build-release** - Builds release APK
+   - Only runs on push to `main` or `develop`
+   - Requires both unit and UI tests to pass
+   - Uploads release APK (90-day retention)
+
+5. **test-summary** - Aggregates test results
+   - Reports overall pass/fail status
+   - Fails if any tests failed
+   - Provides summary in GitHub UI
+
+**Artifacts:**
+- `app-debug` - Debug APK (30 days)
+- `app-release` - Release APK (90 days)
+- `unit-test-results` - Unit test reports (7 days)
+- `ui-test-results` - UI test reports (7 days)
+
+#### 2. Pull Request Tests Workflow (`pr-tests.yml`)
+
+**Triggers:**
+- Pull requests opened, synchronized, or reopened
+- Targets `main` or `develop` branches
+- Manual dispatch
+
+**Focus:** Runs comprehensive unit and UI tests to validate PR changes before merging.
+
+### CI/CD Best Practices
+
+1. **Parallel Execution**: Unit and UI tests run in parallel after build for faster feedback
+
+2. **Artifact Management**: 
+   - Debug APKs: 30-day retention for development
+   - Release APKs: 90-day retention for production candidates
+   - Test reports: 7-day retention for issue investigation
+
+3. **Caching Strategy**:
+   - Gradle dependencies cached automatically
+   - Android AVD cached to reduce emulator startup time
+
+4. **Release Gate**: Release APKs only built after all tests pass on main/develop branches
+
+5. **Test Isolation**: Each test job runs independently to prevent interference
+
+### Monitoring CI/CD
+
+#### Viewing Test Results
+
+1. Navigate to Actions tab in GitHub
+2. Select workflow run
+3. Click on test job (unit-tests or ui-tests)
+4. Download artifacts to view detailed HTML reports
+
+#### Common CI/CD Issues
+
+**Issue: Tests timeout**
+- Solution: Jobs have 30-60 minute timeouts; optimize test execution time
+
+**Issue: Emulator fails to start**
+- Solution: AVD cache may be corrupted; clear cache and rebuild
+
+**Issue: Flaky UI tests**
+- Solution: Add proper wait conditions and disable animations
+
+**Issue: Build fails due to dependencies**
+- Solution: Check Gradle cache; may need to refresh dependencies
+
+### Status Badges
+
+Add workflow status badges to README:
+
+```markdown
+[![Build and Test](https://github.com/d7knight2/SharkLeakFinderKit/workflows/Build%20and%20Test/badge.svg)](https://github.com/d7knight2/SharkLeakFinderKit/actions)
+[![PR Tests](https://github.com/d7knight2/SharkLeakFinderKit/workflows/Pull%20Request%20Tests/badge.svg)](https://github.com/d7knight2/SharkLeakFinderKit/actions)
+```
+
+## Test Reports
+
+### Unit Test Reports
+
+Location: `app/build/reports/tests/test/index.html`
+
+**Contains:**
+- Test execution summary
+- Pass/fail statistics
+- Individual test results
+- Execution time
+- Stack traces for failures
+
+### UI Test Reports
+
+Location: `app/build/reports/androidTests/connected/index.html`
+
+**Contains:**
+- Device information
+- Test execution timeline
+- Screenshots (if captured)
+- Logcat output
+- Failure details
+
+### Viewing Reports Locally
+
+```bash
+# Open unit test report
+open app/build/reports/tests/test/index.html
+
+# Open UI test report
+open app/build/reports/androidTests/connected/index.html
+
+# On Linux
+xdg-open app/build/reports/tests/test/index.html
+```
+
+## Integration with Development Workflow
+
+### Pre-commit Testing
+
+Run tests before committing:
+
+```bash
+# Quick unit test check
+./gradlew test
+
+# Full validation
+./scripts/build-and-validate.sh --skip-ui-tests
+```
+
+### Pull Request Workflow
+
+1. Create feature branch
+2. Write code and tests
+3. Run tests locally: `./scripts/run-tests.sh --all`
+4. Push branch - CI runs automatically
+5. Review CI results in PR
+6. Merge only if all tests pass
+
+### Release Workflow
+
+1. Merge to `develop` branch
+2. CI runs full test suite
+3. CI builds release APK
+4. Download release APK from artifacts
+5. Test APK on physical devices
+6. Merge to `main` for production release
+
+## Troubleshooting
+
+### Tests Fail Locally but Pass in CI
+
+- Check Android SDK versions
+- Verify emulator/device API level matches CI
+- Check for environment-specific issues
+
+### Tests Pass Locally but Fail in CI
+
+- May be timing issues in CI environment
+- Add appropriate wait conditions
+- Check for race conditions
+
+### Memory Leak Tests Always Fail
+
+- Ensure test device has sufficient memory
+- Check for proper cleanup in `@After` methods
+- Verify LeakCanary is configured correctly
+
+### UI Tests Cannot Find Views
+
+- Ensure activity is fully loaded before interaction
+- Use IdlingResources for async operations
+- Check if views are in correct visibility state

@@ -1,6 +1,149 @@
-# Auto Resolve Merge Conflicts Script
+# SharkLeakFinderKit Scripts
 
-## Overview
+This directory contains various scripts for building, testing, and managing the SharkLeakFinderKit Android application.
+
+## Build Scripts
+
+### 1. `build-debug.sh`
+Builds a debug APK of the application.
+
+**Usage:**
+```bash
+./scripts/build-debug.sh
+```
+
+**Features:**
+- Cleans previous builds
+- Builds debug APK
+- Displays APK location and size
+- Shows APK information (if aapt is available)
+- Provides adb install command
+
+**Output:**
+- APK: `app/build/outputs/apk/debug/app-debug.apk`
+
+### 2. `build-release.sh`
+Builds a release APK of the application.
+
+**Usage:**
+```bash
+./scripts/build-release.sh
+```
+
+**Features:**
+- Cleans previous builds
+- Builds release APK (unsigned)
+- Displays APK location and size
+- Shows APK information (if aapt is available)
+- Warns about signing requirement for production
+
+**Output:**
+- APK: `app/build/outputs/apk/release/app-release-unsigned.apk`
+
+**Note:** Release APKs should be signed with your release keystore before production deployment.
+
+### 3. `run-tests.sh`
+Runs unit tests and/or UI tests for the application.
+
+**Usage:**
+```bash
+# Run only unit tests (default)
+./scripts/run-tests.sh
+
+# Run only UI tests
+./scripts/run-tests.sh --ui-only
+
+# Run all tests (unit + UI)
+./scripts/run-tests.sh --all
+
+# Run with verbose output
+./scripts/run-tests.sh --verbose
+```
+
+**Options:**
+- `-u, --unit-only` : Run only unit tests (default)
+- `-i, --ui-only` : Run only UI/instrumented tests
+- `-a, --all` : Run both unit and UI tests
+- `-v, --verbose` : Enable verbose output with stacktraces
+- `-h, --help` : Show help message
+
+**Requirements for UI tests:**
+- Android device or emulator must be connected
+- Use `adb devices` to verify device connection
+
+**Output:**
+- Unit test reports: `app/build/reports/tests/test/index.html`
+- UI test reports: `app/build/reports/androidTests/connected/index.html`
+
+### 4. `build-and-validate.sh`
+Comprehensive build and validation script that runs tests, builds APK, and validates the output.
+
+**Usage:**
+```bash
+# Build debug APK with all tests
+./scripts/build-and-validate.sh
+
+# Build release APK with all tests
+./scripts/build-and-validate.sh --release
+
+# Build without running tests
+./scripts/build-and-validate.sh --skip-tests
+
+# Build with only unit tests (skip UI tests)
+./scripts/build-and-validate.sh --skip-ui-tests
+```
+
+**Options:**
+- `-r, --release` : Build release APK instead of debug
+- `-s, --skip-tests` : Skip running tests
+- `-u, --skip-ui-tests` : Skip UI tests (run unit tests only)
+- `-h, --help` : Show help message
+
+**Pipeline Steps:**
+1. **Run Tests** - Executes unit and UI tests (unless skipped)
+2. **Build APK** - Builds debug or release APK
+3. **Validate APK** - Verifies APK integrity and extracts information
+4. **Summary** - Displays overall results and next steps
+
+**Features:**
+- Color-coded output for easy reading
+- Detailed validation of APK file
+- Extracts package information, version, SDK levels
+- Provides installation instructions
+- Exit codes indicate success/failure for CI/CD integration
+
+## CI/CD Integration Scripts
+
+### 5. `upload-to-appetize.sh`
+Uploads APK to Appetize.io for cloud-based testing.
+
+**Usage:**
+```bash
+export APPETIZE_TOKEN="your_token"
+./scripts/upload-to-appetize.sh
+```
+
+See the [Appetize Upload section](#appetize-upload-scripts) for details.
+
+### 6. `unit-tests.sh`
+Comprehensive unit test suite for validating upload scripts.
+
+**Usage:**
+```bash
+./scripts/unit-tests.sh
+```
+
+### 7. `test-appetize-upload.sh`
+Tests the Appetize.io upload functionality.
+
+**Usage:**
+```bash
+./scripts/test-appetize-upload.sh
+```
+
+## Auto Resolve Merge Conflicts Script
+
+### 8. `resolve_conflicts.sh`
 
 The `resolve_conflicts.sh` script automates the resolution of merge conflicts in open pull requests. It provides detailed logging, robust error handling, and prevents excessive email notifications by only commenting on PRs when meaningful actions are taken.
 
