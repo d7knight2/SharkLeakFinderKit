@@ -146,15 +146,11 @@ jobs:
           # Stage all changes
           git add -A
           
-          # Commit changes
-          COMMIT_MSG="Apply FlyCI Wingman suggested fixes
-
-Automatically applied fixes suggested by FlyCI Wingman.
-Patches applied: ${{ steps.apply-patches.outputs.applied }}
-
-Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-          
-          git commit -m "$COMMIT_MSG"
+          # Commit changes with multiline message
+          git commit -m "Apply FlyCI Wingman suggested fixes" \
+            -m "Automatically applied fixes suggested by FlyCI Wingman." \
+            -m "Patches applied: ${{ steps.apply-patches.outputs.applied }}" \
+            -m "Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
           
           # Push changes
           git push origin "$BRANCH"
@@ -201,20 +197,24 @@ Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.co
           APPLIED="${{ steps.apply-patches.outputs.applied }}"
           FAILED="${{ steps.apply-patches.outputs.failed }}"
           
-          COMMENT_BODY="## 🤖 FlyCI Wingman Fixes Applied
-
-✅ Successfully applied **$APPLIED** patch(es) from FlyCI Wingman suggestion.
-"
+          # Build comment body using heredoc
+          COMMENT_BODY=$(cat <<EOF
+          ## 🤖 FlyCI Wingman Fixes Applied
+          
+          ✅ Successfully applied **${APPLIED}** patch(es) from FlyCI Wingman suggestion.
+          EOF
+          )
           
           if [ "$FAILED" -gt 0 ]; then
             COMMENT_BODY="${COMMENT_BODY}
-⚠️ Failed to apply **$FAILED** patch(es). These may need manual intervention.
-"
+          
+          ⚠️ Failed to apply **${FAILED}** patch(es). These may need manual intervention."
           fi
           
           COMMENT_BODY="${COMMENT_BODY}
-📝 Changes have been committed and pushed to this branch.
-🔄 Workflow will automatically re-run to verify the fixes."
+          
+          📝 Changes have been committed and pushed to this branch.
+          🔄 Workflow will automatically re-run to verify the fixes."
           
           gh pr comment ${{ steps.pr-details.outputs.pr_number }} --body "$COMMENT_BODY"
       
@@ -223,8 +223,13 @@ Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.co
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment ${{ steps.pr-details.outputs.pr_number }} --body "## ⚠️ FlyCI Wingman Auto-Apply
-
-No applicable patches found in the comment. The comment may not contain properly formatted diff patches, or the patches may not be compatible with the current codebase.
-
-Please review the suggestions manually and apply them as needed."
+          COMMENT_BODY=$(cat <<'EOF'
+          ## ⚠️ FlyCI Wingman Auto-Apply
+          
+          No applicable patches found in the comment. The comment may not contain properly formatted diff patches, or the patches may not be compatible with the current codebase.
+          
+          Please review the suggestions manually and apply them as needed.
+          EOF
+          )
+          
+          gh pr comment ${{ steps.pr-details.outputs.pr_number }} --body "$COMMENT_BODY"
