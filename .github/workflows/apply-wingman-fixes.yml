@@ -161,7 +161,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Wait a bit for the push to register
+            // Note: This step is informational only.
+            // The push above will automatically trigger workflow runs via push event.
+            // We include a brief delay to allow the push to register in the GitHub API.
             await new Promise(resolve => setTimeout(resolve, 5000));
 
             // Get the latest workflow runs for this PR

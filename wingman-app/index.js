@@ -128,12 +128,12 @@ module.exports = (app) => {
 
     try {
       // Get installation token for authentication
-      const { token } = await context.octokit.apps.createInstallationAccessToken({
+      const { data: { token } } = await context.octokit.apps.createInstallationAccessToken({
         installation_id: context.payload.installation.id
       });
 
-      const repoUrl = `https://x-access-token:${token.data.token}@github.com/${repository.owner.login}/${repository.name}.git`;
-      const git = simpleGit(workDir);
+      const repoUrl = `https://x-access-token:${token}@github.com/${repository.owner.login}/${repository.name}.git`;
+      const git = simpleGit();
 
       // Clone the repository
       app.log.info(`Cloning repository: ${repository.full_name}`);
