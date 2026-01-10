@@ -1,0 +1,33 @@
+{
+  "name": "flyci-wingman-auto-apply",
+  "version": "1.0.0",
+  "description": "GitHub App to automatically apply FlyCI Wingman suggested fixes",
+  "main": "app.js",
+  "scripts": {
+    "start": "probot run ./app.js",
+    "dev": "nodemon --exec \"npm start\"",
+    "test": "jest"
+  },
+  "keywords": [
+    "probot",
+    "github",
+    "probot-app",
+    "flyci",
+    "wingman",
+    "auto-apply"
+  ],
+  "author": "SharkLeakFinderKit",
+  "license": "MIT",
+  "dependencies": {
+    "probot": "^12.3.1",
+    "simple-git": "^3.21.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "smee-client": "^1.2.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
