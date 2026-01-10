@@ -182,3 +182,7 @@ jobs:
             echo "No APK files were found in the repository." >> $GITHUB_STEP_SUMMARY
             echo "Please ensure APK files are available before running this workflow." >> $GITHUB_STEP_SUMMARY
           fi
+      
+      - name: FlyCI Wingman
+        if: failure()
+        uses: fly-ci/wingman-action@v1
