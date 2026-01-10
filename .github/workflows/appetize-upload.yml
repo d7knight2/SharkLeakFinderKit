@@ -104,3 +104,7 @@ jobs:
           echo "🔗 URL: ${{ steps.upload.outputs.app_url }}"
           echo "🔑 Key: ${{ steps.upload.outputs.app_key }}"
           echo "::endgroup::"
+      
+      - name: FlyCI Wingman
+        if: failure()
+        uses: fly-ci/wingman-action@v1
