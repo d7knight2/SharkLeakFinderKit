@@ -1,0 +1,235 @@
+name: FlyCI Wingman Auto-Apply Fixes
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  auto-apply-fixes:
+    # Only run on PR comments
+    if: github.event.issue.pull_request && contains(github.event.comment.body, 'fly-ci/wingman')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check if comment is from FlyCI Wingman
+        id: check-comment
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          
+          # Check if comment contains typical FlyCI Wingman markers
+          if echo "$COMMENT_BODY" | grep -q "fly-ci/wingman\|FlyCI Wingman\|Suggested Fix"; then
+            echo "is_wingman=true" >> $GITHUB_OUTPUT
+            echo "✅ Comment is from FlyCI Wingman"
+          else
+            echo "is_wingman=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Comment is not from FlyCI Wingman, skipping"
+          fi
+      
+      - name: Get PR details
+        if: steps.check-comment.outputs.is_wingman == 'true'
+        id: pr-details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ github.event.issue.number }}"
+          PR_DATA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
+          
+          BRANCH=$(echo "$PR_DATA" | jq -r '.head.ref')
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.head.sha')
+          
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          
+          echo "📋 PR #$PR_NUMBER"
+          echo "🌿 Branch: $BRANCH"
+          echo "📌 HEAD SHA: $HEAD_SHA"
+      
+      - name: Checkout PR branch
+        if: steps.check-comment.outputs.is_wingman == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr-details.outputs.branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        if: steps.check-comment.outputs.is_wingman == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Extract and apply patches
+        if: steps.check-comment.outputs.is_wingman == 'true'
+        id: apply-patches
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          
+          echo "📝 Extracting patches from comment..."
+          
+          # Create a temporary directory for patches
+          mkdir -p /tmp/flyci-patches
+          
+          # Extract unified diff patches from the comment
+          # Look for code blocks that contain diff content
+          echo "$COMMENT_BODY" | awk '
+            BEGIN { in_code_block = 0; patch_num = 0; }
+            /```diff/ || /```patch/ { in_code_block = 1; patch_num++; next; }
+            /```/ && in_code_block { in_code_block = 0; next; }
+            in_code_block && /^(diff |--- |\\+\\+\\+ |@@ |[+-])/ { 
+              print > "/tmp/flyci-patches/patch_" patch_num ".patch";
+            }
+          '
+          
+          # Count patches found
+          PATCH_COUNT=$(find /tmp/flyci-patches -name "*.patch" -type f 2>/dev/null | wc -l)
+          
+          if [ "$PATCH_COUNT" -eq 0 ]; then
+            echo "⚠️ No patches found in comment"
+            echo "patches_applied=false" >> $GITHUB_OUTPUT
+            echo "patch_count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "✅ Found $PATCH_COUNT patch(es)"
+          echo "patch_count=$PATCH_COUNT" >> $GITHUB_OUTPUT
+          
+          # Apply each patch
+          APPLIED=0
+          FAILED=0
+          
+          for patch_file in /tmp/flyci-patches/*.patch; do
+            if [ -f "$patch_file" ]; then
+              echo "::group::Applying $(basename $patch_file)"
+              cat "$patch_file"
+              
+              if git apply --check "$patch_file" 2>&1; then
+                git apply "$patch_file"
+                echo "✅ Successfully applied $(basename $patch_file)"
+                APPLIED=$((APPLIED + 1))
+              else
+                echo "❌ Failed to apply $(basename $patch_file)"
+                FAILED=$((FAILED + 1))
+              fi
+              
+              echo "::endgroup::"
+            fi
+          done
+          
+          echo "applied=$APPLIED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          
+          if [ "$APPLIED" -gt 0 ]; then
+            echo "patches_applied=true" >> $GITHUB_OUTPUT
+          else
+            echo "patches_applied=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📊 Summary: $APPLIED applied, $FAILED failed"
+      
+      - name: Commit and push changes
+        if: steps.apply-patches.outputs.patches_applied == 'true'
+        env:
+          BRANCH: ${{ steps.pr-details.outputs.branch }}
+        run: |
+          # Check if there are any changes
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "⚠️ No changes to commit"
+            exit 0
+          fi
+          
+          # Stage all changes
+          git add -A
+          
+          # Commit changes with multiline message
+          git commit -m "Apply FlyCI Wingman suggested fixes" \
+            -m "Automatically applied fixes suggested by FlyCI Wingman." \
+            -m "Patches applied: ${{ steps.apply-patches.outputs.applied }}" \
+            -m "Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          
+          # Push changes
+          git push origin "$BRANCH"
+          
+          echo "✅ Changes committed and pushed to $BRANCH"
+      
+      - name: Trigger workflow re-run
+        if: steps.apply-patches.outputs.patches_applied == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.pr-details.outputs.pr_number }}"
+          
+          # Get the failed workflow runs for this PR
+          WORKFLOW_RUNS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "repos/${{ github.repository }}/actions/runs?event=pull_request&status=failure&per_page=5")
+          
+          # Find workflow runs associated with this PR
+          RUN_ID=$(echo "$WORKFLOW_RUNS" | jq -r --arg pr "$PR_NUMBER" \
+            '.workflow_runs[] | select(.pull_requests[]?.number == ($pr | tonumber)) | .id' | head -n 1)
+          
+          if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
+            echo "🔄 Re-running workflow $RUN_ID"
+            
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "repos/${{ github.repository }}/actions/runs/$RUN_ID/rerun-failed-jobs"
+            
+            echo "✅ Workflow re-run triggered"
+          else
+            echo "ℹ️ No failed workflow found to re-run"
+            echo "The next push will automatically trigger workflows"
+          fi
+      
+      - name: Add comment to PR
+        if: steps.apply-patches.outputs.patches_applied == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APPLIED="${{ steps.apply-patches.outputs.applied }}"
+          FAILED="${{ steps.apply-patches.outputs.failed }}"
+          
+          # Build comment body using heredoc
+          COMMENT_BODY=$(cat <<EOF
+          ## 🤖 FlyCI Wingman Fixes Applied
+          
+          ✅ Successfully applied **${APPLIED}** patch(es) from FlyCI Wingman suggestion.
+          EOF
+          )
+          
+          if [ "$FAILED" -gt 0 ]; then
+            COMMENT_BODY="${COMMENT_BODY}
+          
+          ⚠️ Failed to apply **${FAILED}** patch(es). These may need manual intervention."
+          fi
+          
+          COMMENT_BODY="${COMMENT_BODY}
+          
+          📝 Changes have been committed and pushed to this branch.
+          🔄 Workflow will automatically re-run to verify the fixes."
+          
+          gh pr comment ${{ steps.pr-details.outputs.pr_number }} --body "$COMMENT_BODY"
+      
+      - name: Add comment if no patches found
+        if: steps.check-comment.outputs.is_wingman == 'true' && steps.apply-patches.outputs.patches_applied == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMENT_BODY=$(cat <<'EOF'
+          ## ⚠️ FlyCI Wingman Auto-Apply
+          
+          No applicable patches found in the comment. The comment may not contain properly formatted diff patches, or the patches may not be compatible with the current codebase.
+          
+          Please review the suggestions manually and apply them as needed.
+          EOF
+          )
+          
+          gh pr comment ${{ steps.pr-details.outputs.pr_number }} --body "$COMMENT_BODY"

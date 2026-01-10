@@ -28,3 +28,7 @@ jobs:
           echo "::group::Running conflict resolution script"
           bash scripts/resolve_conflicts.sh
           echo "::endgroup::"
+      
+      - name: FlyCI Wingman
+        if: failure()
+        uses: fly-ci/wingman-action@v1

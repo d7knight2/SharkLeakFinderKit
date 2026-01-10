@@ -12,6 +12,7 @@ SharkLeakFinderKit demonstrates best practices for integrating LeakCanary into A
 - ✅ **Best Practice Configuration** - Properly configured for optimal leak detection
 - ✅ **Comprehensive Testing** - Both unit tests and UI tests for complete coverage
 - ✅ **Automated CI/CD** - GitHub Actions workflow for mandatory PR testing
+- ✅ **FlyCI Wingman Integration** - Automated CI failure analysis and fix suggestions
 - ✅ **Memory Monitoring** - Real-time memory usage tracking during UI events
 - ✅ **Leak Reporting** - Detailed logging and reporting of detected leaks
 - ✅ **Sample Scenarios** - Demonstrates common memory leak patterns
@@ -130,6 +131,16 @@ The repository includes automated testing via GitHub Actions:
 - **Requirement:** All tests must pass before merge
 
 See **[BRANCH_PROTECTION.md](BRANCH_PROTECTION.md)** for detailed setup instructions on enforcing mandatory testing.
+
+### FlyCI Wingman Integration
+
+The repository includes FlyCI Wingman for automated CI failure analysis:
+- **Automatic Analysis:** Analyzes CI failures and provides fix suggestions
+- **Auto-Apply (Actions):** GitHub Actions workflow to automatically apply suggested fixes
+- **Auto-Apply (App):** Probot-based GitHub App for webhook-driven automation
+- **Workflow Integration:** Added to all CI workflows to run on job failures
+
+See **[FLYCI_WINGMAN_INTEGRATION.md](FLYCI_WINGMAN_INTEGRATION.md)** for detailed setup and usage instructions.
 
 ## UI Testing for Memory Leaks
 
