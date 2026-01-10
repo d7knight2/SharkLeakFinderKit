@@ -22,3 +22,9 @@ build/
 # gradlew.bat
 *.log
 *.hprof
+
+# Node.js (wingman-app)
+wingman-app/node_modules/
+wingman-app/.env
+wingman-app/*.pem
+wingman-app/package-lock.json

@@ -1,0 +1,20 @@
+{
+  "name": "FlyCI Wingman Auto-Apply",
+  "description": "Automatically applies FlyCI Wingman suggested fixes to pull requests",
+  "url": "https://github.com/d7knight2/SharkLeakFinderKit",
+  "redirect_url": "https://github.com/d7knight2/SharkLeakFinderKit",
+  "setup_url": "https://github.com/d7knight2/SharkLeakFinderKit/blob/main/probot-flyci-app/README.md",
+  "hook_attributes": {
+    "url": ""
+  },
+  "public": false,
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "actions": "write",
+    "issues": "read"
+  },
+  "default_events": [
+    "issue_comment"
+  ]
+}
