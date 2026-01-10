@@ -64,11 +64,12 @@ object LeakReporter {
     fun reportHeapAnalysis(analysis: HeapAnalysis) {
         when (analysis) {
             is HeapAnalysisSuccess -> {
+                val allLeaks = analysis.applicationLeaks + analysis.libraryLeaks
                 Log.i(TAG, "=== Heap Analysis Success ===")
-                Log.i(TAG, "Leak count: ${analysis.allLeaks.size}")
+                Log.i(TAG, "Leak count: ${allLeaks.size}")
                 Log.i(TAG, "Analysis duration: ${analysis.analysisDurationMillis}ms")
                 
-                analysis.allLeaks.forEachIndexed { index, leak ->
+                allLeaks.forEachIndexed { index, leak ->
                     val leakType = if (leak.leakTraces.isEmpty()) {
                         "Unknown"
                     } else {
@@ -80,7 +81,7 @@ object LeakReporter {
                     logLeak(
                         leakType = leakType,
                         description = leak.shortDescription,
-                        retainedHeapBytes = leak.totalRetainedHeapByteSize ?: 0,
+                        retainedHeapBytes = (leak.totalRetainedHeapByteSize ?: 0).toLong(),
                         retainedObjectCount = leak.totalRetainedObjectCount ?: 0,
                         trace = trace
                     )
