@@ -1,0 +1,41 @@
+{
+  "name": "flyci-wingman-applier",
+  "version": "1.0.0",
+  "description": "GitHub App to automatically apply FlyCI Wingman suggested fixes to pull requests",
+  "author": "SharkLeakFinderKit Team",
+  "license": "MIT",
+  "homepage": "https://github.com/d7knight2/SharkLeakFinderKit",
+  "keywords": [
+    "probot",
+    "github",
+    "probot-app",
+    "flyci",
+    "wingman",
+    "ci",
+    "automation"
+  ],
+  "scripts": {
+    "start": "probot run ./index.js",
+    "dev": "nodemon --exec 'npm start'",
+    "test": "jest",
+    "test:watch": "jest --watch --notify --notifyMode=change --coverage"
+  },
+  "dependencies": {
+    "probot": "^12.3.1",
+    "simple-git": "^3.20.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.1",
+    "smee-client": "^1.2.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ]
+  }
+}

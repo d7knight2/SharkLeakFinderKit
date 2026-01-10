@@ -68,6 +68,10 @@ jobs:
           else
             echo "⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
           fi
+      
+      - name: FlyCI Wingman
+        if: failure()
+        uses: fly-ci/wingman-action@v1
 
   ui-tests:
     name: UI Tests
@@ -159,6 +163,10 @@ jobs:
           else
             echo "⚠️ No UI test results found" >> $GITHUB_STEP_SUMMARY
           fi
+      
+      - name: FlyCI Wingman
+        if: failure()
+        uses: fly-ci/wingman-action@v1
 
   test-summary:
     name: Test Summary
