@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # Gradle dependency updates
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Customize commit messages
+    commit-message:
+      prefix: "chore(deps)"
+    # Group security updates
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
