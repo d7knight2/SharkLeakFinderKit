@@ -16,10 +16,10 @@ jobs:
     # Only run on PR comments from wingman bot
     if: |
       github.event.issue.pull_request &&
-      (contains(github.event.comment.user.login, 'wingman') || 
+      (contains(github.event.comment.user.login, 'wingman') ||
        contains(github.event.comment.user.login, 'fly-ci') ||
        contains(github.event.comment.body, '```diff'))
-    
+
     steps:
       - name: Get PR details
         id: pr
@@ -31,41 +31,41 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number
             });
-            
+
             core.setOutput('head_ref', pr.data.head.ref);
             core.setOutput('head_sha', pr.data.head.sha);
             core.setOutput('base_ref', pr.data.base.ref);
-            
+
             return pr.data;
-      
+
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.pr.outputs.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      
+
       - name: Extract and apply patches
         id: apply-patches
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           echo "::group::Extracting patches from comment"
-          
+
           # Extract diff blocks from comment
           echo "$COMMENT_BODY" > /tmp/comment_body.txt
-          
+
           # Find all diff blocks (between ```diff and ```)
           patches_found=0
           patch_num=0
           in_diff=false
           current_patch=""
-          
+
           while IFS= read -r line; do
             if [[ "$line" =~ ^\`\`\`diff ]]; then
               in_diff=true
@@ -84,32 +84,32 @@ jobs:
               current_patch="${current_patch}${line}"$'\n'
             fi
           done < /tmp/comment_body.txt
-          
+
           echo "Found $patches_found patch(es)"
           echo "::endgroup::"
-          
+
           if [ $patches_found -eq 0 ]; then
             echo "⚠️ No patches found in comment"
             echo "patches_applied=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           echo "::group::Applying patches"
           patches_applied=0
           patches_failed=0
-          
+
           for i in $(seq 1 $patch_num); do
             patch_file="/tmp/wingman_patch_${i}.patch"
             if [ -f "$patch_file" ]; then
               echo "Applying patch #${i}..."
-              
+
               if git apply --whitespace=fix "$patch_file" 2>&1; then
                 echo "✅ Patch #${i} applied successfully"
                 patches_applied=$((patches_applied + 1))
               else
                 echo "⚠️ Patch #${i} failed to apply"
                 patches_failed=$((patches_failed + 1))
-                
+
                 # Try with --reject to get partial application
                 if git apply --reject --whitespace=fix "$patch_file" 2>&1; then
                   echo "⚠️ Patch #${i} partially applied (some hunks rejected)"
@@ -117,21 +117,21 @@ jobs:
               fi
             fi
           done
-          
+
           echo "::endgroup::"
-          
+
           echo "Patches applied: $patches_applied"
           echo "Patches failed: $patches_failed"
-          
+
           echo "patches_applied=$patches_applied" >> $GITHUB_OUTPUT
           echo "patches_failed=$patches_failed" >> $GITHUB_OUTPUT
-          
+
           if [ $patches_applied -gt 0 ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Check for changes
         id: check-changes
         run: |
@@ -143,19 +143,19 @@ jobs:
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "No changes to commit"
           fi
-      
+
       - name: Commit and push changes
         if: steps.check-changes.outputs.has_changes == 'true'
         run: |
           git add -A
           git commit -m "Apply FlyCI Wingman suggested fixes
-          
+
           Applied ${{ steps.apply-patches.outputs.patches_applied }} patch(es) from Wingman
-          
+
           Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-          
+
           git push origin ${{ steps.pr.outputs.head_ref }}
-      
+
       - name: Trigger workflow re-run
         if: steps.check-changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
@@ -163,7 +163,7 @@ jobs:
           script: |
             // Wait a bit for the push to register
             await new Promise(resolve => setTimeout(resolve, 5000));
-            
+
             // Get the latest workflow runs for this PR
             const runs = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
@@ -172,18 +172,18 @@ jobs:
               status: 'completed',
               per_page: 5
             });
-            
+
             // Find failed runs for this PR
             const prNumber = context.issue.number;
-            const failedRuns = runs.data.workflow_runs.filter(run => 
+            const failedRuns = runs.data.workflow_runs.filter(run =>
               run.conclusion === 'failure' &&
               run.pull_requests?.some(pr => pr.number === prNumber)
             );
-            
+
             if (failedRuns.length > 0) {
               core.info(`Found ${failedRuns.length} failed workflow run(s) for this PR`);
             }
-      
+
       - name: Comment on PR
         if: steps.check-changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
@@ -191,23 +191,23 @@ jobs:
           script: |
             const patchesApplied = ${{ steps.apply-patches.outputs.patches_applied }};
             const patchesFailed = ${{ steps.apply-patches.outputs.patches_failed }};
-            
+
             let message = `### ✅ FlyCI Wingman Fixes Applied\n\n`;
             message += `Applied **${patchesApplied}** patch(es) from Wingman suggestions.\n\n`;
-            
+
             if (patchesFailed > 0) {
               message += `⚠️ **${patchesFailed}** patch(es) could not be applied automatically.\n\n`;
             }
-            
+
             message += `The changes have been committed and pushed. CI will re-run automatically.`;
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               body: message
             });
-      
+
       - name: Comment if no patches found
         if: steps.apply-patches.outputs.patches_applied == '0' && steps.apply-patches.outputs.patches_failed == '0'
         uses: actions/github-script@v7
