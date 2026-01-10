@@ -1,0 +1,21 @@
+{
+  "name": "flyci-wingman-applier",
+  "url": "https://github.com/d7knight2/SharkLeakFinderKit",
+  "description": "Automatically detects FlyCI Wingman PR comments and applies suggested fixes",
+  "hook_attributes": {
+    "url": "https://smee.io/YOUR-SMEE-CHANNEL"
+  },
+  "redirect_url": "https://github.com/d7knight2/SharkLeakFinderKit",
+  "setup_url": "https://github.com/d7knight2/SharkLeakFinderKit/blob/main/wingman-app/README.md",
+  "public": true,
+  "default_permissions": {
+    "contents": "write",
+    "issues": "write",
+    "pull_requests": "write",
+    "actions": "write"
+  },
+  "default_events": [
+    "issue_comment",
+    "pull_request"
+  ]
+}
