@@ -16,27 +16,82 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      # Setup Java and Android build environment
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew 2>/dev/null || echo "No gradlew found, will use gradle command"
+      
+      # Build the Android APK
+      - name: Build Android APK
+        run: |
+          echo "::group::Building Android APK"
+          
+          # Build debug APK (faster and doesn't require signing for Appetize.io)
+          if [ -f "gradlew" ]; then
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            gradle assembleDebug --no-daemon --stacktrace
+          fi
+          
+          echo "✓ APK build completed"
+          echo "::endgroup::"
+      
       - name: Find APK file
         id: find-apk
         run: |
           echo "::group::Searching for APK files"
           
-          # Search for APK files in the repository
-          APK_FILES=$(find . -type f -name "*.apk" | grep -v ".git")
+          # Search for APK files in the build output directory
+          # Priority order: debug APK (unsigned), then release APK
+          APK_FILE=""
           
-          if [ -z "$APK_FILES" ]; then
-            echo "❌ ERROR: No APK file found in the repository"
-            echo "::error::No APK file found. Please add an APK file to the repository before running this workflow."
+          # Look for debug APK first (most common for testing)
+          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            APK_FILE="app/build/outputs/apk/debug/app-debug.apk"
+            echo "✓ Found debug APK: $APK_FILE"
+          # Look for release APK as fallback
+          elif [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+            APK_FILE="app/build/outputs/apk/release/app-release.apk"
+            echo "✓ Found release APK: $APK_FILE"
+          # Search for any APK in build outputs
+          else
+            APK_FILES=$(find app/build/outputs/apk -type f -name "*.apk" 2>/dev/null || true)
+            if [ -n "$APK_FILES" ]; then
+              APK_FILE=$(echo "$APK_FILES" | head -n 1)
+              echo "✓ Found APK: $APK_FILE"
+            fi
+          fi
+          
+          # Verify an APK was found
+          if [ -z "$APK_FILE" ]; then
+            echo "❌ ERROR: No APK file found after build"
+            echo "::error::APK build succeeded but no APK file found in app/build/outputs/apk/"
+            echo "Directory contents:"
+            ls -R app/build/outputs/ 2>/dev/null || echo "Build outputs directory not found"
             exit 1
           fi
           
-          # Get the first APK file found
-          APK_FILE=$(echo "$APK_FILES" | head -n 1)
-          echo "✓ Found APK file: $APK_FILE"
+          # Get APK information
+          APK_SIZE=$(wc -c < "$APK_FILE" | tr -d ' ')
+          APK_NAME=$(basename "$APK_FILE")
+          
+          echo "APK Details:"
+          echo "  Name: $APK_NAME"
+          echo "  Path: $APK_FILE"
+          echo "  Size: $APK_SIZE bytes"
           
           # Set output for next steps
           echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
-          echo "apk_name=$(basename $APK_FILE)" >> $GITHUB_OUTPUT
+          echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
           
           echo "::endgroup::"
       

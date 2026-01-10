@@ -17,57 +17,91 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history to search for APKs
+          fetch-depth: 0  # Fetch all history for better context
+      
+      # Setup Java and Android build environment
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew 2>/dev/null || echo "No gradlew found, will use gradle command"
+      
+      # Build the Android APK
+      - name: Build Android APK
+        run: |
+          echo "::group::Building Android APK"
+          
+          # Build debug APK (faster and doesn't require signing for Appetize.io)
+          if [ -f "gradlew" ]; then
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            gradle assembleDebug --no-daemon --stacktrace
+          fi
+          
+          echo "✓ APK build completed"
+          echo "::endgroup::"
       
       - name: Search for AnrWatchdog APK
         id: find-apk
         run: |
           echo "::group::Searching for APK files"
           
-          # Search for APK files, prioritizing AnrWatchdog-related APKs
-          apk_files=$(find . -type f -name "*.apk" 2>/dev/null || true)
+          # Search for APK files in the build output directory
+          # This workflow prioritizes AnrWatchdog-related APKs if found
+          APK_FILE=""
           
-          if [ -z "$apk_files" ]; then
-            echo "❌ No APK files found in the repository"
+          # First, check standard build output locations
+          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            APK_FILE="app/build/outputs/apk/debug/app-debug.apk"
+            echo "✓ Found debug APK: $APK_FILE"
+          elif [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+            APK_FILE="app/build/outputs/apk/release/app-release.apk"
+            echo "✓ Found release APK: $APK_FILE"
+          else
+            # Search for any APK in build outputs, prioritizing certain names
+            APK_FILES=$(find app/build/outputs/apk -type f -name "*.apk" 2>/dev/null || true)
+            
+            if [ -n "$APK_FILES" ]; then
+              # Try to find AnrWatchdog-specific APK first
+              anr_apk=$(echo "$APK_FILES" | grep -i "anrwatchdog\|anr-watchdog\|anr_watchdog" | head -n 1 || true)
+              
+              if [ -n "$anr_apk" ]; then
+                echo "✓ Found AnrWatchdog APK: $anr_apk"
+                APK_FILE="$anr_apk"
+              else
+                # Use the first APK found
+                APK_FILE=$(echo "$APK_FILES" | head -n 1)
+                echo "✓ Found APK: $APK_FILE"
+              fi
+            fi
+          fi
+          
+          # Check if we found an APK
+          if [ -z "$APK_FILE" ]; then
+            echo "❌ No APK files found after build"
             echo "apk_found=false" >> $GITHUB_OUTPUT
             echo "::endgroup::"
             exit 0
           fi
           
-          echo "Found APK files:"
-          echo "$apk_files"
-          
-          # Try to find AnrWatchdog-specific APK first
-          anr_apk=$(echo "$apk_files" | grep -i "anrwatchdog\|anr-watchdog\|anr_watchdog" | head -n 1 || true)
-          
-          if [ -n "$anr_apk" ]; then
-            echo "✓ Found AnrWatchdog APK: $anr_apk"
-            apk_path="$anr_apk"
-          else
-            # If no AnrWatchdog-specific APK, try demo APKs
-            demo_apk=$(echo "$apk_files" | grep -i "demo" | head -n 1 || true)
-            
-            if [ -n "$demo_apk" ]; then
-              echo "✓ Found demo APK: $demo_apk"
-              apk_path="$demo_apk"
-            else
-              # Use the first APK found
-              apk_path=$(echo "$apk_files" | head -n 1)
-              echo "⚠️  No AnrWatchdog or demo APK found, using first available: $apk_path"
-            fi
-          fi
-          
           # Get APK file information
-          apk_size=$(wc -c < "$apk_path" | tr -d ' ')
-          apk_name=$(basename "$apk_path")
+          apk_size=$(wc -c < "$APK_FILE" | tr -d ' ')
+          apk_name=$(basename "$APK_FILE")
           
           echo "APK Details:"
           echo "  Name: $apk_name"
-          echo "  Path: $apk_path"
+          echo "  Path: $APK_FILE"
           echo "  Size: $apk_size bytes"
           
           echo "apk_found=true" >> $GITHUB_OUTPUT
-          echo "apk_path=$apk_path" >> $GITHUB_OUTPUT
+          echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
           echo "apk_name=$apk_name" >> $GITHUB_OUTPUT
           echo "apk_size=$apk_size" >> $GITHUB_OUTPUT
           
@@ -148,19 +182,21 @@ jobs:
       - name: Log No APK Found
         if: steps.find-apk.outputs.apk_found == 'false'
         run: |
-          echo "::warning::No APK files found in the repository"
-          echo "::group::APK Search Details"
-          echo "Repository structure:"
-          find . -type f -name "*.apk" -o -name "*.aab" -o -name "*demo*" | head -20 || echo "No matching files found"
+          echo "::warning::No APK files found after build"
+          echo "::group::APK Build Details"
+          echo "The workflow attempted to build the Android project but no APK was generated."
           echo ""
-          echo "The workflow searched for:"
-          echo "  - Files matching *.apk pattern"
-          echo "  - Files with 'anrwatchdog', 'anr-watchdog', or 'demo' in the name"
+          echo "Build output directory contents:"
+          ls -R app/build/outputs/ 2>/dev/null || echo "❌ Build outputs directory not found"
           echo ""
-          echo "To resolve this:"
-          echo "  1. Ensure APK files are built and committed to the repository, or"
-          echo "  2. Add a build step before this workflow to generate APK files, or"
-          echo "  3. Store APK files as release artifacts"
+          echo "Possible causes:"
+          echo "  1. Build failed but did not exit with error code"
+          echo "  2. APK output path has changed"
+          echo "  3. Build configuration issue in build.gradle.kts"
+          echo ""
+          echo "Expected APK locations:"
+          echo "  - app/build/outputs/apk/debug/app-debug.apk"
+          echo "  - app/build/outputs/apk/release/app-release.apk"
           echo "::endgroup::"
           exit 1
       
