@@ -65,7 +65,7 @@ object LeakReporter {
         when (analysis) {
             is HeapAnalysisSuccess -> {
                 Log.i(TAG, "=== Heap Analysis Success ===")
-                Log.i(TAG, "Leak count: ${analysis.allLeaks.count()}")
+                Log.i(TAG, "Leak count: ${analysis.allLeaks.size}")
                 Log.i(TAG, "Analysis duration: ${analysis.analysisDurationMillis}ms")
                 
                 analysis.allLeaks.forEachIndexed { index, leak ->
@@ -80,7 +80,7 @@ object LeakReporter {
                     logLeak(
                         leakType = leakType,
                         description = leak.shortDescription,
-                        retainedHeapBytes = (leak.totalRetainedHeapByteSize ?: 0).toLong(),
+                        retainedHeapBytes = leak.totalRetainedHeapByteSize ?: 0L,
                         retainedObjectCount = leak.totalRetainedObjectCount ?: 0,
                         trace = trace
                     )
