@@ -107,6 +107,55 @@ jobs:
             echo "⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
           fi
       
+      - name: Check FlyCI API Connectivity
+        if: always()
+        run: |
+          echo "::group::Verifying FlyCI API connectivity"
+          
+          # DNS Resolution Check
+          echo "🔍 Step 1: Checking DNS resolution for api.flyci.net..."
+          if nslookup api.flyci.net > /dev/null 2>&1; then
+            echo "✅ DNS resolution successful"
+            nslookup api.flyci.net
+          else
+            echo "❌ ERROR: DNS resolution failed for api.flyci.net"
+            echo "::error::Cannot resolve api.flyci.net. Please check network connectivity or DNS configuration."
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo ""
+          
+          # HTTP Connection Check
+          echo "🔍 Step 2: Testing HTTP connection to api.flyci.net..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://api.flyci.net 2>/dev/null || echo "000")
+          
+          echo "HTTP Status Code: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ HTTP connection successful (HTTP $HTTP_CODE)"
+          else
+            echo "❌ ERROR: HTTP connection failed (HTTP $HTTP_CODE)"
+            echo "::error::FlyCI API at api.flyci.net is not responding with HTTP 200. Received HTTP $HTTP_CODE instead."
+            echo ""
+            echo "Debugging information:"
+            curl -v https://api.flyci.net 2>&1 | head -20 || echo "Failed to get detailed connection info"
+            echo ""
+            echo "Possible causes:"
+            echo "  - FlyCI API service may be down"
+            echo "  - Network connectivity issues"
+            echo "  - Firewall blocking outbound HTTPS connections"
+            echo "  - SSL/TLS certificate issues"
+            echo ""
+            echo "Please verify FlyCI service status or check network configuration."
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All FlyCI API connectivity checks passed"
+          echo "::endgroup::"
+      
       - name: FlyCI Wingman
         if: always()
         uses: fly-ci/wingman-action@v1
@@ -237,6 +286,55 @@ jobs:
           else
             echo "⚠️ No UI test results found" >> $GITHUB_STEP_SUMMARY
           fi
+      
+      - name: Check FlyCI API Connectivity
+        if: always()
+        run: |
+          echo "::group::Verifying FlyCI API connectivity"
+          
+          # DNS Resolution Check
+          echo "🔍 Step 1: Checking DNS resolution for api.flyci.net..."
+          if nslookup api.flyci.net > /dev/null 2>&1; then
+            echo "✅ DNS resolution successful"
+            nslookup api.flyci.net
+          else
+            echo "❌ ERROR: DNS resolution failed for api.flyci.net"
+            echo "::error::Cannot resolve api.flyci.net. Please check network connectivity or DNS configuration."
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo ""
+          
+          # HTTP Connection Check
+          echo "🔍 Step 2: Testing HTTP connection to api.flyci.net..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 30 https://api.flyci.net 2>/dev/null || echo "000")
+          
+          echo "HTTP Status Code: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+            echo "✅ HTTP connection successful (HTTP $HTTP_CODE)"
+          else
+            echo "❌ ERROR: HTTP connection failed (HTTP $HTTP_CODE)"
+            echo "::error::FlyCI API at api.flyci.net is not responding with HTTP 200. Received HTTP $HTTP_CODE instead."
+            echo ""
+            echo "Debugging information:"
+            curl -v https://api.flyci.net 2>&1 | head -20 || echo "Failed to get detailed connection info"
+            echo ""
+            echo "Possible causes:"
+            echo "  - FlyCI API service may be down"
+            echo "  - Network connectivity issues"
+            echo "  - Firewall blocking outbound HTTPS connections"
+            echo "  - SSL/TLS certificate issues"
+            echo ""
+            echo "Please verify FlyCI service status or check network configuration."
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All FlyCI API connectivity checks passed"
+          echo "::endgroup::"
       
       - name: FlyCI Wingman
         if: always()
