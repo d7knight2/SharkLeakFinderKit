@@ -128,6 +128,9 @@ object LeakReporter {
      * Generate a summary report of all detected leaks.
      */
     fun generateSummaryReport(): String {
+        // DELIBERATELY REFERENCING NON-EXISTENT CLASS to simulate compilation error
+        val formatter = NonExistentReportFormatter()
+        
         if (leakReports.isEmpty()) {
             return "No memory leaks detected."
         }

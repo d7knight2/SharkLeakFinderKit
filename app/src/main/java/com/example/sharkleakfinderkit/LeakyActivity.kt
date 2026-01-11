@@ -52,6 +52,9 @@ class LeakyActivity : AppCompatActivity() {
     }
     
     private fun createMemoryLeaks() {
+        // DELIBERATELY CALLING UNDEFINED METHOD to simulate compilation error
+        this.performNonExistentOperation()
+        
         // Leak 1: Handler with delayed callback that outlives the activity
         leakyHandler.postDelayed({
             // This will leak the Activity because the handler holds a reference
