@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
   upload-apk:
@@ -220,5 +222,5 @@ jobs:
           fi
       
       - name: FlyCI Wingman
-        if: failure()
+        if: always()
         uses: fly-ci/wingman-action@v1

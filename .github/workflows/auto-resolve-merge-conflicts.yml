@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   resolve-conflicts:
@@ -30,5 +31,5 @@ jobs:
           echo "::endgroup::"
       
       - name: FlyCI Wingman
-        if: failure()
+        if: always()
         uses: fly-ci/wingman-action@v1

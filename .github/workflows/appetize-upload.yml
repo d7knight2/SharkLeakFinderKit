@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
+      issues: write
     
     steps:
       - name: Checkout repository
@@ -161,5 +163,5 @@ jobs:
           echo "::endgroup::"
       
       - name: FlyCI Wingman
-        if: failure()
+        if: always()
         uses: fly-ci/wingman-action@v1

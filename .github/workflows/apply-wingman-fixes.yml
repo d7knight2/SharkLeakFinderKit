@@ -5,8 +5,15 @@ on:
     types:
       - created
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   apply-fixes:
+    # Only run on PR comments from FlyCI Wingman
+    if: github.event.issue.pull_request && (github.event.comment.user.type == 'Bot' && (contains(github.event.comment.user.login, 'wingman') || contains(github.event.comment.user.login, 'fly-ci')))
     runs-on: ubuntu-latest
     steps:
       - name: Log Debug Information
