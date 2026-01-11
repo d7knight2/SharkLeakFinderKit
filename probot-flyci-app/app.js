@@ -88,7 +88,7 @@ module.exports = (app) => {
           await addCommentToPR(context, issue.number, {
             success: false,
             message: 'No applicable patches found in the comment.',
-          });
+          }, app);
           return;
         }
 
@@ -106,7 +106,7 @@ module.exports = (app) => {
             await addCommentToPR(context, issue.number, {
               success: false,
               message: 'Patches were applied but resulted in no changes.',
-            });
+            }, app);
             return;
           }
 
@@ -138,14 +138,14 @@ Applied via FlyCI Wingman Auto-Apply GitHub App`;
             success: true,
             applied: results.applied,
             failed: results.failed,
-          });
+          }, app);
         } else {
           app.log.info('No patches were successfully applied');
           await addCommentToPR(context, issue.number, {
             success: false,
             message: 'Failed to apply any patches. Manual intervention may be required.',
             failed: results.failed,
-          });
+          }, app);
         }
       } finally {
         // Clean up temporary directory
@@ -163,7 +163,7 @@ Applied via FlyCI Wingman Auto-Apply GitHub App`;
         await addCommentToPR(context, issue.number, {
           success: false,
           message: `Error applying fixes: ${error.message}`,
-        });
+        }, app);
       } catch (commentError) {
         app.log.error('Failed to add error comment:', commentError);
       }
@@ -296,7 +296,7 @@ async function triggerWorkflowRerun(context, repository, prNumber, app) {
 /**
  * Add a comment to the PR with results
  */
-async function addCommentToPR(context, prNumber, results) {
+async function addCommentToPR(context, prNumber, results, app) {
   let commentBody;
 
   if (results.success) {
@@ -330,10 +330,18 @@ Failed patches: **${results.failed}**
 Please review the suggestions manually and apply them as needed.`;
   }
 
-  await context.octokit.issues.createComment({
-    owner: context.payload.repository.owner.login,
-    repo: context.payload.repository.name,
-    issue_number: prNumber,
-    body: commentBody,
-  });
+  app.log.debug(`Attempting to post a comment to PR #${prNumber} (length: ${commentBody.length} chars)`);
+  
+  try {
+    await context.octokit.issues.createComment({
+      owner: context.payload.repository.owner.login,
+      repo: context.payload.repository.name,
+      issue_number: prNumber,
+      body: commentBody,
+    });
+    app.log.info(`Successfully posted comment to PR #${prNumber}`);
+  } catch (error) {
+    app.log.error(`Failed to post comment to PR #${prNumber}: ${error.message}`);
+    throw error;
+  }
 }

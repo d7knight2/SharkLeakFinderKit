@@ -12,7 +12,7 @@
     "contents": "write",
     "pull_requests": "write",
     "actions": "write",
-    "issues": "read"
+    "issues": "write"
   },
   "default_events": [
     "issue_comment"
