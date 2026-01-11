@@ -14,6 +14,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusTextView: TextView
     private lateinit var leakyActivityButton: Button
     
+    // INTENTIONAL ERROR v2: Type mismatch for FlyCI Wingman testing
+    // This should cause a compilation error due to incompatible types
+    // Expected error: "Type mismatch: inferred type is String but Int was expected"
+    private val intentionalError: Int = "This is a String not an Int"
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
