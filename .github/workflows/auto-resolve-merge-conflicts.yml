@@ -73,7 +73,7 @@ jobs:
             echo "✅ HTTP connection successful (HTTP $HTTP_CODE)"
           else
             echo "❌ ERROR: HTTP connection failed (HTTP $HTTP_CODE)"
-            echo "::error::FlyCI API at api.flyci.net is not responding with HTTP 200. Received HTTP $HTTP_CODE instead."
+            echo "::error::FlyCI API at api.flyci.net is not responding with a successful HTTP status code (expected 200, 301, or 302). Received HTTP $HTTP_CODE instead."
             echo ""
             echo "Debugging information:"
             curl -v https://api.flyci.net 2>&1 | head -20 || echo "Failed to get detailed connection info"
