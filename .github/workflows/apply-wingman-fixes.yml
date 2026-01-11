@@ -18,12 +18,25 @@ jobs:
     steps:
       - name: Log Debug Information
         run: |
+          echo "::group::FlyCI Wingman Event Debug Information"
+          echo "Event: issue_comment.created"
+          echo "Is PR Comment: ${{ github.event.issue.pull_request != null }}"
           echo "Commenter Username: ${{ github.event.comment.user.login }}"
           echo "Commenter Type: ${{ github.event.comment.user.type }}"
           echo "Is Bot: ${{ github.event.comment.user.type == 'Bot' }}"
-          echo "Match Wingman/Fly-CI: ${{ contains(github.event.comment.user.login, 'wingman') || contains(github.event.comment.user.login, 'fly-ci') }}"
+          echo "Match Wingman: ${{ contains(github.event.comment.user.login, 'wingman') }}"
+          echo "Match Fly-CI: ${{ contains(github.event.comment.user.login, 'fly-ci') }}"
+          echo "Comment Body Preview: ${COMMENT_BODY:0:200}"
+          echo "::endgroup::"
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         shell: bash
+      
       - name: Verify Environment Variables
         run: |
-          env
+          echo "::group::Environment Variables Check"
+          echo "GITHUB_TOKEN is set: ${{ secrets.GITHUB_TOKEN != '' }}"
+          echo "GITHUB_ACTOR: ${{ github.actor }}"
+          echo "GITHUB_REPOSITORY: ${{ github.repository }}"
+          echo "::endgroup::"
         shell: bash
