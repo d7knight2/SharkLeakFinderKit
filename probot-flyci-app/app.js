@@ -330,10 +330,18 @@ Failed patches: **${results.failed}**
 Please review the suggestions manually and apply them as needed.`;
   }
 
-  await context.octokit.issues.createComment({
-    owner: context.payload.repository.owner.login,
-    repo: context.payload.repository.name,
-    issue_number: prNumber,
-    body: commentBody,
-  });
+  app.log.debug(`Attempting to post a comment: ${commentBody}`);
+  
+  try {
+    await context.octokit.issues.createComment({
+      owner: context.payload.repository.owner.login,
+      repo: context.payload.repository.name,
+      issue_number: prNumber,
+      body: commentBody,
+    });
+    app.log.info(`Successfully posted comment to PR #${prNumber}`);
+  } catch (error) {
+    app.log.error(`Failed to post comment to PR #${prNumber}:`, error);
+    throw error;
+  }
 }
