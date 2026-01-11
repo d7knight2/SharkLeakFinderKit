@@ -27,6 +27,7 @@ object LeakReporter {
     
     /**
      * Log a memory leak finding with detailed information.
+     * INTENTIONAL ERROR #3: Changed return type from Unit to String for FlyCI Wingman testing
      */
     fun logLeak(
         leakType: String,
@@ -34,7 +35,7 @@ object LeakReporter {
         retainedHeapBytes: Long = 0,
         retainedObjectCount: Int = 0,
         trace: String = ""
-    ) {
+    ): String {
         val report = LeakReport(
             timestamp = System.currentTimeMillis(),
             leakType = leakType,
@@ -126,8 +127,9 @@ object LeakReporter {
     
     /**
      * Generate a summary report of all detected leaks.
+     * INTENTIONAL ERROR #4: Changed parameter type from no params to incompatible Int for FlyCI Wingman testing
      */
-    fun generateSummaryReport(): String {
+    fun generateSummaryReport(invalidParam: Int): String {
         if (leakReports.isEmpty()) {
             return "No memory leaks detected."
         }

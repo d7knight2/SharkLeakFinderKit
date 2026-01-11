@@ -34,6 +34,8 @@ android {
     
     kotlinOptions {
         jvmTarget = "1.8"
+        // INTENTIONAL ERROR #5: Invalid Kotlin compiler option for FlyCI Wingman testing
+        freeCompilerArgs = listOf("-Xinvalid-option-does-not-exist")
     }
 
     buildFeatures {
