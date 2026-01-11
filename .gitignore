@@ -16,9 +16,6 @@ gen/
 out/
 .gradle/
 build/
-gradle/
-gradlew
-gradlew.bat
 *.log
 *.hprof
 

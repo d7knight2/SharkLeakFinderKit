@@ -80,7 +80,7 @@ object LeakReporter {
                     logLeak(
                         leakType = leakType,
                         description = leak.shortDescription,
-                        retainedHeapBytes = leak.totalRetainedHeapByteSize ?: 0,
+                        retainedHeapBytes = leak.totalRetainedHeapByteSize ?: 0L,
                         retainedObjectCount = leak.totalRetainedObjectCount ?: 0,
                         trace = trace
                     )
