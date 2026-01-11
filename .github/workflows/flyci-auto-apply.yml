@@ -9,6 +9,7 @@ permissions:
   pull-requests: write
   actions: write
   issues: write
+  id-token: write
 
 jobs:
   auto-apply-fixes:
