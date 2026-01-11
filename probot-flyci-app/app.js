@@ -330,7 +330,7 @@ Failed patches: **${results.failed}**
 Please review the suggestions manually and apply them as needed.`;
   }
 
-  app.log.debug(`Attempting to post a comment: ${commentBody}`);
+  app.log.debug(`Attempting to post a comment to PR #${prNumber} (length: ${commentBody.length} chars)`);
   
   try {
     await context.octokit.issues.createComment({
@@ -341,7 +341,7 @@ Please review the suggestions manually and apply them as needed.`;
     });
     app.log.info(`Successfully posted comment to PR #${prNumber}`);
   } catch (error) {
-    app.log.error(`Failed to post comment to PR #${prNumber}:`, error);
+    app.log.error(`Failed to post comment to PR #${prNumber}: ${error.message}`);
     throw error;
   }
 }
