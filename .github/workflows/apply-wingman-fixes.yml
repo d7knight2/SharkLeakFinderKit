@@ -1,14 +1,15 @@
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
 name: Apply Wingman Fixes
 
 on:
   issue_comment:
     types:
       - created
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
 
 jobs:
   apply-fixes:
@@ -29,6 +30,7 @@ jobs:
           echo "  - contents: write"
           echo "  - pull-requests: write"
           echo "  - issues: write"
+          echo "  - id-token: write"
           echo "::endgroup::"
         shell: bash
       
