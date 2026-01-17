@@ -174,17 +174,6 @@ Both workflows implement the same core functionality:
 - Upload to Appetize.io
 - Provide detailed logging and error handling
 
-### 2. Auto Resolve Merge Conflicts (`auto-resolve-merge-conflicts.yml`)
-
-Automatically attempts to resolve merge conflicts in open pull requests.
-
-#### Trigger Conditions
-
-- **Automatic**: Runs every hour via cron schedule
-- **Manual**: Can be triggered manually using workflow_dispatch
-
-For more details, see the workflow file.
-
 ## Contributing
 
 When adding new workflows:
