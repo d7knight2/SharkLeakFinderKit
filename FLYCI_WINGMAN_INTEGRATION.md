@@ -19,7 +19,6 @@ FlyCI Wingman has been added as a final step to the following workflows:
 - `.github/workflows/pr-tests.yml` (unit-tests and ui-tests jobs)
 - `.github/workflows/appetize-upload.yml`
 - `.github/workflows/upload-apk-appetize.yml`
-- `.github/workflows/auto-resolve-merge-conflicts.yml`
 
 ### How It Works
 
